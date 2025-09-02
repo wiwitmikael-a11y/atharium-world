@@ -318,7 +318,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                         const storageTier = owner.storage[resDef.tier];
                         if (storageTier.current < storageTier.capacity) {
                             const currentAmount = owner.resources[resId] || 0;
-                            const potentialNewAmount = currentAmount + amount;
                             const amountToAdd = Math.min(amount, storageTier.capacity - storageTier.current);
                             
                             owner.resources[resId] = currentAmount + amountToAdd;
