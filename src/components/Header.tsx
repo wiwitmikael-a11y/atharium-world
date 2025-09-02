@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { GameState, FactionState, SoundManager } from '../types';
-import { EPOCHS, TICK_PER_YEAR, FACTIONS_MAP } from '../constants';
+import type { GameState, SoundManager } from '../types';
+import { EPOCHS, TICK_PER_YEAR, STARTING_YEAR } from '../constants';
 import Icon from './Icon';
 import SettingsMenu from './SettingsMenu';
 import HelpModal from './HelpModal';
+import InfoTooltip from './InfoTooltip';
 
 interface HeaderProps {
-  gameTime: GameState['gameTime'];
-  factions: Record<string, FactionState>;
+  gameState: GameState;
   gameSpeed: number;
   onSetSpeed: (speed: number) => void;
   soundManager: SoundManager;
@@ -15,32 +15,44 @@ interface HeaderProps {
   onExitToMenu: () => void;
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const SPEEDS = [0, 1, 2, 4];
 
-const formatAthar = (num: number) => {
-    if (num < 1000) return Math.floor(num).toString();
-    if (num < 1000000) return (num / 1000).toFixed(1) + 'k';
-    return (num / 1000000).toFixed(1) + 'M';
+const formatMintedAthar = (num: number) => {
+    return new Intl.NumberFormat('en-US', {
+        notation: 'compact',
+        maximumFractionDigits: 2
+    }).format(num);
 }
 
-const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu }) => {
+const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu }) => {
+  const { gameTime, totalMintedAthar } = gameState;
   const epochInfo = EPOCHS.find(e => e.id === gameTime.epoch);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
   const settingsRef = useRef<HTMLDivElement>(null);
+  const timeRef = useRef<HTMLDivElement>(null);
+  const epochRef = useRef<HTMLDivElement>(null);
+  const atharMintedRef = useRef<HTMLDivElement>(null);
 
+
+  // Time calculations
   const ticksPerMonth = TICK_PER_YEAR / 12;
-  const currentMonthIndex = Math.floor((gameTime.tick % TICK_PER_YEAR) / ticksPerMonth);
-  const currentMonthName = MONTHS[currentMonthIndex];
+  const totalMonthsSinceStart = Math.floor(gameTime.tick / ticksPerMonth);
+  const yearNumber = 1 + Math.floor(totalMonthsSinceStart / 12);
+  const monthNumber = 1 + (totalMonthsSinceStart % 12);
+  const currentMonthName = MONTHS[monthNumber - 1];
+  const fullYear = STARTING_YEAR + yearNumber -1;
+  const nextEpochIndex = EPOCHS.findIndex(e => e.id === gameTime.epoch) + 1;
+  const nextEpoch = nextEpochIndex < EPOCHS.length ? EPOCHS[nextEpochIndex] : null;
 
-  const topFaction = React.useMemo(() => {
-    return Object.values(factions).reduce((top, current) => current.athar > top.athar ? current : top, Object.values(factions)[0] || null);
-  }, [factions]);
-  
-  const topFactionInfo = topFaction ? FACTIONS_MAP.get(topFaction.id) : null;
-  const displayAthar = topFaction ? Math.max(1, topFaction.athar) : 1;
-  const atharProgress = (Math.log10(displayAthar) % 1) * 100;
+  // $ATHAR Minted calculations
+  const atharNextMilestone = 10 ** Math.ceil(Math.log10(Math.max(1, totalMintedAthar)));
+  const atharPrevMilestone = totalMintedAthar > 0 ? atharNextMilestone / 10 : 0;
+  const atharProgress = atharNextMilestone === atharPrevMilestone ? 100 : ((totalMintedAthar - atharPrevMilestone) / (atharNextMilestone - atharPrevMilestone)) * 100;
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -63,25 +75,23 @@ const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpe
           
           <div className="flex items-center space-x-2 sm:space-x-6">
               <div className="flex items-center space-x-2 sm:space-x-6 bg-gray-800 px-2 sm:px-4 py-2 rounded-lg border border-gray-700">
-                  <div className="flex items-center space-x-2" title="Date">
+                  <div ref={timeRef} onClick={() => setActiveTooltip(activeTooltip === 'time' ? null : 'time')} className="flex items-center space-x-2 cursor-pointer" title="Game Date">
                       <Icon name="time" className="w-5 h-5 text-cyan-400" />
-                      <span className="font-mono text-base sm:text-lg w-24 sm:w-28 text-center">{currentMonthName} {gameTime.year}</span>
+                      <span className="font-mono text-base sm:text-lg w-24 sm:w-28 text-center">M {monthNumber} Y {yearNumber}</span>
                   </div>
                   <div className="w-px h-6 bg-gray-600 hidden sm:block"></div>
-                  <div className="hidden sm:flex items-center space-x-2" title="Epoch">
+                  <div ref={epochRef} onClick={() => setActiveTooltip(activeTooltip === 'epoch' ? null : 'epoch')} className="hidden sm:flex items-center space-x-2 cursor-pointer" title="Current Epoch">
                       <Icon name="epoch" className="w-5 h-5 text-purple-400" />
                       <span className="text-lg">{epochInfo?.name || 'Unknown Epoch'}</span>
                   </div>
               </div>
-               {topFactionInfo && (
-                  <div className="hidden lg:flex items-center space-x-3 w-64" title={`Dominant Faction: ${topFactionInfo.name}`}>
-                      <Icon name="athar" className={`w-6 h-6 text-${topFactionInfo.color}`} />
-                      <div className="w-full bg-gray-700 rounded-full h-2.5">
-                          <div className={`bg-${topFactionInfo.color} h-2.5 rounded-full`} style={{ width: `${atharProgress}%` }}></div>
-                      </div>
-                      <span className="font-mono text-lg font-bold">{formatAthar(topFaction.athar)}</span>
-                  </div>
-               )}
+              <div ref={atharMintedRef} onClick={() => setActiveTooltip(activeTooltip === 'athar' ? null : 'athar')} className="hidden lg:flex items-center space-x-3 w-64 cursor-pointer" title="$ATHAR Minted">
+                    <span className="text-sm font-semibold text-red-400">$ATHAR Minted</span>
+                    <div className="w-full bg-gray-700 rounded-full h-2.5">
+                        <div className="bg-red-500 h-2.5 rounded-full" style={{ width: `${atharProgress}%` }}></div>
+                    </div>
+                    <span className="font-mono text-lg font-bold">{formatMintedAthar(totalMintedAthar)}</span>
+                </div>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -145,6 +155,34 @@ const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpe
           </div>
         </div>
       </header>
+      
+      {/* Tooltips */}
+      {activeTooltip === 'time' && (
+        <InfoTooltip targetRef={timeRef} onClose={() => setActiveTooltip(null)}>
+          <h4 className="font-bold text-cyan-400 mb-2">Timeline Details</h4>
+          <p><strong className="font-semibold">Current Date:</strong> {currentMonthName}, {fullYear}</p>
+          <p><strong className="font-semibold">World Time:</strong> Month {monthNumber}, Year {yearNumber}</p>
+          {nextEpoch && <p className="mt-2">The <strong className="text-purple-400">{nextEpoch.name}</strong> looms on the horizon, a new chapter waiting to be written...</p>}
+        </InfoTooltip>
+      )}
+
+      {activeTooltip === 'epoch' && epochInfo && (
+        <InfoTooltip targetRef={epochRef} onClose={() => setActiveTooltip(null)}>
+          <h4 className="font-bold text-purple-400 mb-2">{epochInfo.name}</h4>
+          <p>{epochInfo.synopsis}</p>
+          <p className="mt-2 text-xs text-gray-400">Epochs define the overarching challenges and opportunities of the era, influencing global events and faction behavior.</p>
+        </InfoTooltip>
+      )}
+
+      {activeTooltip === 'athar' && (
+        <InfoTooltip targetRef={atharMintedRef} onClose={() => setActiveTooltip(null)}>
+          <h4 className="font-bold text-red-400 mb-2">$ATHAR Minted</h4>
+          <p>This is a global measure of the world's collective magical and technological progress.</p>
+          <p className="mt-2">It increases as factions across the world purify raw <strong className="text-purple-300">Chrono-Crystals</strong> into their refined state using <strong className="text-cyan-300">Arcane Enchanters</strong>.</p>
+          <p className="mt-2 text-xs text-gray-400">Higher levels of minted $ATHAR may trigger world-changing events or unlock new possibilities.</p>
+        </InfoTooltip>
+      )}
+
       {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
     </>
   );

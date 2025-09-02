@@ -207,6 +207,7 @@ export interface GameState {
   dyingUnits: (UnitInstance & { deathTick: number })[];
   eventLog: GameEvent[];
   nextEventId: number;
+  totalMintedAthar: number;
 }
 
 export type DiplomaticStatus = 'War' | 'Neutral' | 'Alliance';

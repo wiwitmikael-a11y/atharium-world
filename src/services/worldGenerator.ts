@@ -1,5 +1,6 @@
 
-import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP } from '../constants';
+
+import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP, STARTING_YEAR } from '../constants';
 import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier } from '../types';
 
 function getRandomInt(min: number, max: number): number {
@@ -299,7 +300,7 @@ export function generateInitialGameState(): GameState {
     factions: factionStates,
     gameTime: {
       tick: 0,
-      year: 1453,
+      year: STARTING_YEAR,
       epoch: 'era_of_awakening',
     },
     selectedTile: null,
@@ -309,5 +310,6 @@ export function generateInitialGameState(): GameState {
     dyingUnits: [],
     eventLog: [],
     nextEventId: 0,
+    totalMintedAthar: 0,
   };
 }

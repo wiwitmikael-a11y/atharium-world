@@ -1,4 +1,5 @@
 
+
 import { useEffect, useRef } from 'react';
 import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier } from '../types';
 import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP } from '../constants';
@@ -335,6 +336,11 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                             const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: prodResDef.tier });
                             const finalAmount = infra.produces.amount * (1 + productionBonus);
                             processResource(infra.produces.resourceId, finalAmount);
+                            
+                            // Increment total minted Athar if it's an Arcane Enchanter
+                            if (infra.id === 'infra_arcane_enchanter' && infra.produces.resourceId === 'refined_chronocrystal') {
+                                newState.totalMintedAthar += finalAmount;
+                            }
                         }
                     } else if (infra.produces) { // Generating
                         if (!infra.requiresResourceId || infra.requiresResourceId === tile.resourceId) {

@@ -1,4 +1,5 @@
 
+
 import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Epoch } from './types';
 
 export const WORLD_SIZE = 80;
@@ -138,13 +139,21 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = [
   { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsStorage: { 'Raw': 500 }, },
   { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsStorage: { 'Processed': 250, 'Component': 100 }, },
   
-  // Research
+  // Research & Advanced Processing
   { 
     id: 'infra_research_archive', name: 'Research Archive', assetId: 'infra_research_archive', 
     description: 'Generates 0.5 research points per tick.', 
     cost: { 'refined_chronocrystal': 20, 'steamwood_plank': 50 }, 
     tier: 2, 
     generatesResearchPoints: 0.5 
+  },
+  { 
+    id: 'infra_arcane_enchanter', name: 'Arcane Enchanter', assetId: 'infra_arcane_enchanter', 
+    description: 'Purifies 2 raw Chrono-Crystals into 1 Refined Chrono-Crystal, contributing to the world\'s overall magical and technological advancement ($ATHAR Minted).', 
+    cost: { 'steamwood_plank': 40, 'iron_ingot': 40 }, 
+    consumes: { resourceId: 'chronocrystal_raw', amount: 2 }, 
+    produces: { resourceId: 'refined_chronocrystal', amount: 1 }, 
+    tier: 2 
   },
 ];
 

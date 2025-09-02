@@ -228,8 +228,7 @@ const App: React.FC = () => {
           <main ref={mapContainerRef} className="flex-1 h-full relative">
             <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
             <Header
-              gameTime={gameState.gameTime}
-              factions={gameState.factions}
+              gameState={gameState}
               gameSpeed={gameSpeed}
               onSetSpeed={setGameSpeed}
               soundManager={soundManager}
