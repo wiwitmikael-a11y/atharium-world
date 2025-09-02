@@ -1,8 +1,8 @@
 
 
-// FIX: Import `useMemo` from react.
+// FIX: Import `ResourceTier` to support the new storage display system.
 import React, { useMemo } from 'react';
-import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager } from '../types';
+import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
@@ -133,6 +133,13 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
     );
 }
 
+// FIX: Added TIER_NAMES constant for the new storage display.
+const TIER_NAMES: Record<ResourceTier, string> = {
+    Raw: 'Raw Materials',
+    Processed: 'Processed Goods',
+    Component: 'Components',
+    Exotic: 'Exotic Materials',
+};
 
 const Sidebar: React.FC<SidebarProps> = ({ selectedTile, gameState, onSelectUnit, onPanToLocation, soundManager, isMinimized, onToggleMinimize }) => {
   const { selectedUnitId } = gameState;
@@ -244,29 +251,35 @@ const renderContent = () => {
                             <span className="font-mono">{ownerFactionState.population} / {infrastructure?.populationCapacity || 0}</span>
                         </div>
                     )}
-                    {isSettlement ? (
-                        <div>
-                            <h4 className="font-semibold text-gray-300">Resources & Storage:</h4>
-                            <ul className="text-sm text-gray-400 grid grid-cols-1 gap-x-4">
-                                {Object.entries(ownerFactionState.resources).sort(([a], [b]) => a.localeCompare(b)).map(([id, amount]) => {
-                                    const resourceInfo = RESOURCES_MAP.get(id);
-                                    const capacity = ownerFactionState.resourceCapacity[id] || 0;
-                                    const percentage = capacity > 0 ? (amount / capacity) * 100 : 0;
-                                    const isNearCapacity = percentage > 90;
-
-                                    return (
-                                        <li key={id} className="space-y-1 py-1">
-                                            <div className="flex justify-between">
-                                                <span>{resourceInfo?.name || id}:</span>
-                                                <span className={`font-mono ${isNearCapacity ? 'text-yellow-400 font-bold' : ''}`}>{Math.floor(amount)} / {capacity}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-700 rounded-full h-1.5">
-                                                <div className={`h-1.5 rounded-full ${isNearCapacity ? 'bg-yellow-500' : 'bg-cyan-500'}`} style={{ width: `${percentage}%` }}></div>
-                                            </div>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
+                    {/* FIX: Replaced resource display to use the new faction.storage system, showing resources by tier. */}
+                    {isSettlement && ownerFactionState.storage ? (
+                        <div className="space-y-2">
+                            {Object.entries(ownerFactionState.storage).map(([tier, data]) => {
+                                const percentage = data.capacity > 0 ? (data.current / data.capacity) * 100 : 0;
+                                const isNearCapacity = percentage > 90;
+                                const tierName = TIER_NAMES[tier as ResourceTier];
+                                return (
+                                <div key={tier}>
+                                    <h4 className="font-semibold text-gray-300 flex justify-between">
+                                        <span>{tierName}</span>
+                                        <span className={`font-mono ${isNearCapacity ? 'text-yellow-400' : ''}`}>{Math.floor(data.current)} / {data.capacity}</span>
+                                    </h4>
+                                    <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+                                        <div className={`h-1.5 rounded-full ${isNearCapacity ? 'bg-yellow-500' : 'bg-cyan-500'}`} style={{ width: `${percentage}%` }}></div>
+                                    </div>
+                                    <ul className="text-xs text-gray-400 mt-1 pl-2">
+                                        {Object.entries(ownerFactionState.resources)
+                                            .filter(([resId]) => RESOURCES_MAP.get(resId)?.tier === tier && ownerFactionState.resources[resId] > 0)
+                                            .map(([resId, amount]) => (
+                                                <li key={resId} className="flex justify-between">
+                                                    <span>{RESOURCES_MAP.get(resId)?.name}</span>
+                                                    <span>{Math.floor(amount)}</span>
+                                                </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                );
+                            })}
                         </div>
                     ) : (
                          <div>

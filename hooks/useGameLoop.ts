@@ -1,7 +1,9 @@
+
 import { useEffect, useRef } from 'react';
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome } from '../types';
-// FIX: Add RESOURCES to the import from constants.
-import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, WORLD_SIZE, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCES } from '../constants';
+// FIX: Add ResourceTier to support the new storage system.
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier } from '../types';
+// FIX: Remove RESOURCES as it's no longer used after refactoring to the storage system.
+import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP } from '../constants';
 
 const getFactionOwnedTiles = (world: TileData[][], factionId: string) => world.flat().filter(t => t.ownerFactionId === factionId);
 
@@ -78,26 +80,34 @@ const calculateTerrainBonus = (unit: UnitInstance, biome: Biome): { atkBonus: nu
 };
 
 
-const recalculateResourceCapacity = (factionState: FactionState, ownedTiles: TileData[]) => {
-    const newCapacity: Record<string, number> = { 'Raw': 0, 'Processed': 0, 'Component': 0, 'Exotic': 0 };
-    const infraTiles = ownedTiles.filter(t => t.infrastructureId);
+// FIX: Replaced outdated `recalculateResourceCapacity` with `recalculateStorage` to work with the new storage system.
+const recalculateStorage = (factionState: FactionState, ownedTiles: TileData[]) => {
+    // Reset capacity
+    for (const tier in factionState.storage) {
+        factionState.storage[tier as ResourceTier].capacity = 0;
+    }
 
+    // Recalculate capacity from all infrastructure
+    const infraTiles = ownedTiles.filter(t => t.infrastructureId);
     for (const tile of infraTiles) {
         const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId!);
-        if (infra?.addsResourceCapacity) {
-            for (const [tier, amount] of Object.entries(infra.addsResourceCapacity)) {
-                newCapacity[tier] = (newCapacity[tier] || 0) + (amount as number);
+        if (infra?.addsStorage) {
+            for (const [tier, amount] of Object.entries(infra.addsStorage)) {
+                factionState.storage[tier as ResourceTier].capacity += amount;
             }
         }
     }
-    
-    // Convert to per-resource capacity for backward compatibility in some checks
-    const perResourceCapacity: Record<string, number> = {};
-    RESOURCES.forEach(res => {
-        perResourceCapacity[res.id] = newCapacity[res.tier] || 0;
-    });
 
-    factionState.resourceCapacity = perResourceCapacity;
+    // Recalculate current usage
+    for (const tier in factionState.storage) {
+        factionState.storage[tier as ResourceTier].current = 0;
+    }
+    for (const [resId, amount] of Object.entries(factionState.resources)) {
+        const resDef = RESOURCES_MAP.get(resId);
+        if (resDef) {
+            factionState.storage[resDef.tier].current += amount;
+        }
+    }
 };
 
 const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: TileData[][], tick: number, nextUnitId: number, soundManager: SoundManager): number => {
@@ -296,6 +306,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
         faction.athar = Math.min(faction.athar + (faction.population * atharPerPop), ATHAR_CAP);
     }
 
+    // FIX: Replaced resource generation logic to use the new storage system.
     // 3. Resource Generation from Infrastructure
     for (let y = 0; y < worldHeight; y++) {
         for (let x = 0; x < worldWidth; x++) {
@@ -305,28 +316,36 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                 const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId);
                 const ownerInfo = FACTIONS_MAP.get(tile.ownerFactionId);
                 if (owner && infra && ownerInfo) {
-                    if (infra.consumes && infra.produces) { // Processing
-                        const resourceDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
-                        const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: resourceDef.tier });
-                        const finalAmount = infra.produces.amount * (1 + productionBonus);
+                    const processResource = (resId: string, amount: number) => {
+                        const resDef = RESOURCES_MAP.get(resId);
+                        if (!resDef) return;
+                        const storageTier = owner.storage[resDef.tier];
+                        if (storageTier.current < storageTier.capacity) {
+                            const currentAmount = owner.resources[resId] || 0;
+                            const amountToAdd = Math.min(amount, storageTier.capacity - storageTier.current);
+                            
+                            owner.resources[resId] = currentAmount + amountToAdd;
+                            storageTier.current += amountToAdd;
+                        }
+                    };
 
+                    if (infra.consumes && infra.produces) { // Processing
+                        const consumesResDef = RESOURCES_MAP.get(infra.consumes.resourceId)!;
                         if ((owner.resources[infra.consumes.resourceId] || 0) >= infra.consumes.amount) {
-                             owner.resources[infra.consumes.resourceId] -= infra.consumes.amount;
-                             const prodRes = infra.produces.resourceId;
-                             const currentAmount = owner.resources[prodRes] || 0;
-                             const capacity = owner.resourceCapacity[prodRes] || 0;
-                             owner.resources[prodRes] = Math.min(currentAmount + finalAmount, capacity);
+                            owner.resources[infra.consumes.resourceId] -= infra.consumes.amount;
+                            owner.storage[consumesResDef.tier].current -= infra.consumes.amount;
+                            
+                            const prodResDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
+                            const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: prodResDef.tier });
+                            const finalAmount = infra.produces.amount * (1 + productionBonus);
+                            processResource(infra.produces.resourceId, finalAmount);
                         }
                     } else if (infra.produces) { // Generating
                         if (!infra.requiresResourceId || infra.requiresResourceId === tile.resourceId) {
-                            const resourceDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
-                            const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: resourceDef.tier });
+                            const resDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
+                            const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: resDef.tier });
                             const finalAmount = infra.produces.amount * (1 + productionBonus);
-
-                            const prodRes = infra.produces.resourceId;
-                            const currentAmount = owner.resources[prodRes] || 0;
-                            const capacity = owner.resourceCapacity[prodRes] || 0;
-                            owner.resources[prodRes] = Math.min(currentAmount + finalAmount, capacity);
+                            processResource(infra.produces.resourceId, finalAmount);
                         }
                     }
                 }
@@ -341,8 +360,9 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
         if (ownedTiles.length === 0) continue;
 
         // Recalculate capacity periodically
+        // FIX: Renamed function call to match refactor.
         if (newState.gameTime.tick > 0 && newState.gameTime.tick % 251 === 0) {
-            recalculateResourceCapacity(faction, ownedTiles);
+            recalculateStorage(faction, ownedTiles);
         }
 
         // Management (Upgrade, Train)
@@ -399,10 +419,12 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                         const modifiedCost = getModifiedCost(infra.cost, infraCostMod);
                         const canAfford = Object.entries(modifiedCost).every(([res, amt]) => (faction.resources[res] || 0) >= amt);
                         
+                        // FIX: Updated storage check to use new system.
                         let hasStorage = true;
                         if (infra.produces) {
-                            const resId = infra.produces.resourceId;
-                            if ((faction.resources[resId] || 0) >= (faction.resourceCapacity[resId] || 0)) {
+                            const resDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
+                            const storageTier = faction.storage[resDef.tier];
+                            if (storageTier.current >= storageTier.capacity) {
                                 hasStorage = false;
                             }
                         }
@@ -420,8 +442,10 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                             const modifiedCost = getModifiedCost(forgeDef.cost, infraCostMod);
                             const canAfford = Object.entries(modifiedCost).every(([res, amt]) => (faction.resources[res] || 0) >= amt);
                             
-                            const producedResId = forgeDef.produces!.resourceId;
-                            const hasStorage = (faction.resources[producedResId] || 0) < (faction.resourceCapacity[producedResId] || 0);
+                            // FIX: Updated storage check to use new system.
+                            const producedResDef = RESOURCES_MAP.get(forgeDef.produces!.resourceId)!;
+                            const storageTier = faction.storage[producedResDef.tier];
+                            const hasStorage = storageTier.current < storageTier.capacity;
 
                             if (canAfford && hasStorage) {
                                 const forgeSite = buildSites.find(s => !s.resourceId && !s.worldEventId);
@@ -756,7 +780,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
 
 export const useGameLoop = (
-  setGameState: React.Dispatch<React.SetStateAction<GameState>>,
+  setGameState: React.Dispatch<React.SetStateAction<GameState | null>>,
   gameSpeed: number,
   soundManager: SoundManager | null,
 ) => {
@@ -768,7 +792,10 @@ export const useGameLoop = (
     if (gameSpeed > 0 && soundManager) {
       const interval = 200 / gameSpeed;
       loopRef.current = window.setInterval(() => {
-        setGameState((prevState) => processGameTick(prevState, soundManager));
+        setGameState((prevState) => {
+            if (!prevState) return null;
+            return processGameTick(prevState, soundManager)
+        });
       }, interval);
     }
 
