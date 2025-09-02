@@ -58,20 +58,20 @@ const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpe
     <header className="absolute top-0 left-0 right-0 bg-gray-900/80 p-2 shadow-lg z-20 backdrop-blur-lg border-b-2 border-cyan-400 shadow-cyan-400/30">
       <div className="container mx-auto flex justify-between items-center text-white">
         
-        <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-6 bg-gray-800 px-4 py-2 rounded-lg border border-gray-700">
+        <div className="flex items-center space-x-2 sm:space-x-6">
+            <div className="flex items-center space-x-2 sm:space-x-6 bg-gray-800 px-2 sm:px-4 py-2 rounded-lg border border-gray-700">
                 <div className="flex items-center space-x-2" title="Date">
                     <Icon name="time" className="w-5 h-5 text-cyan-400" />
-                    <span className="font-mono text-lg w-28 text-center">{currentMonthName} {gameTime.year}</span>
+                    <span className="font-mono text-base sm:text-lg w-24 sm:w-28 text-center">{currentMonthName} {gameTime.year}</span>
                 </div>
-                <div className="w-px h-6 bg-gray-600"></div>
-                <div className="flex items-center space-x-2" title="Epoch">
+                <div className="w-px h-6 bg-gray-600 hidden sm:block"></div>
+                <div className="hidden sm:flex items-center space-x-2" title="Epoch">
                     <Icon name="epoch" className="w-5 h-5 text-purple-400" />
                     <span className="text-lg">{epochInfo?.name || 'Unknown Epoch'}</span>
                 </div>
             </div>
              {topFactionInfo && (
-                <div className="flex items-center space-x-3 w-64" title={`Dominant Faction: ${topFactionInfo.name}`}>
+                <div className="hidden lg:flex items-center space-x-3 w-64" title={`Dominant Faction: ${topFactionInfo.name}`}>
                     <Icon name="athar" className={`w-6 h-6 text-${topFactionInfo.color}`} />
                     <div className="w-full bg-gray-700 rounded-full h-2.5">
                         <div className={`bg-${topFactionInfo.color} h-2.5 rounded-full`} style={{ width: `${atharProgress}%` }}></div>
@@ -91,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpe
                     key={speed}
                     onClick={() => onSetSpeed(speed)}
                     onMouseEnter={() => soundManager?.playUIHoverSFX()}
-                    className={`w-12 h-10 flex items-center justify-center rounded-full transition-colors duration-200 ${
+                    className={`w-10 h-8 sm:w-12 sm:h-10 flex items-center justify-center rounded-full transition-colors duration-200 ${
                       isActive ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-700'
                     }`}
                     title={isPaused ? 'Pause' : `Speed ${speed}x`}

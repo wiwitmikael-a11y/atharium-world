@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Atharium Epochs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -71,6 +71,15 @@
       .dying-unit-animation {
         animation: fade-out-and-rise 1s ease-out forwards;
       }
+      /* Mobile Orientation Lock */
+      @media screen and (max-width: 1023px) and (orientation: portrait) {
+        #orientation-lock {
+          display: flex;
+        }
+        #root {
+          display: none;
+        }
+      }
     </style>
 <script type="importmap">
 {
@@ -85,6 +94,15 @@
 </script>
 </head>
   <body class="bg-gray-900 text-gray-200">
+    <div id="orientation-lock" class="fixed inset-0 bg-gray-900 z-[100] flex-col items-center justify-center text-white p-4 hidden">
+      <div class="text-center">
+        <div class="transform rotate-90 inline-block mb-4">
+            <svg class="w-16 h-16 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+        </div>
+        <h1 class="text-2xl font-cinzel mb-2">Please Rotate Your Device</h1>
+        <p class="text-lg">This experience is best viewed in landscape mode.</p>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>

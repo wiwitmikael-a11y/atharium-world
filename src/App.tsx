@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { GameState, TileData, GamePhase } from './types';
@@ -211,7 +210,7 @@ const App: React.FC = () => {
     }
     if (gamePhase === 'playing' && gameState && soundManager.isAudioInitialized) {
       return (
-        <>
+        <div className="flex w-full h-full">
           <main ref={mapContainerRef} className="flex-1 h-full relative">
             <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
             <Header
@@ -234,7 +233,7 @@ const App: React.FC = () => {
             isMinimized={isSidebarMinimized}
             onToggleMinimize={() => setIsSidebarMinimized(p => !p)}
           />
-        </>
+        </div>
       );
     }
     // Fallback for initial loading state or if something unexpected happens

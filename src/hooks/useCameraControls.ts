@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useCallback } from 'react';
 
 const ZOOM_SENSITIVITY = 0.001;

@@ -95,4 +95,4 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
   );
 };
 
-export default GameMap;
+export default React.memo(GameMap);

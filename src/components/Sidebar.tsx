@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS } from '../constants';
@@ -399,8 +398,8 @@ const renderContent = () => {
   }
 
   return (
-    <aside className={`relative flex flex-col transition-all duration-300 ease-in-out ${isMinimized ? 'w-4' : 'w-80'} bg-gray-900/70 backdrop-blur-md border-l-2 border-cyan-400 shadow-2xl shadow-cyan-400/30`}>
-        <div className="absolute top-1/2 -translate-y-1/2 w-8 h-14 -left-4 flex items-center z-20">
+    <aside className={`absolute sm:relative h-full right-0 flex flex-col transition-all duration-300 ease-in-out ${isMinimized ? 'w-0 sm:w-4' : 'w-full sm:w-80'} bg-gray-900/80 sm:bg-gray-900/70 backdrop-blur-md border-l-2 border-cyan-400 shadow-2xl shadow-cyan-400/30 z-40`}>
+        <div className="absolute top-1/2 -translate-y-1/2 w-8 h-14 -left-8 sm:-left-4 flex items-center z-20">
             <button 
                 onClick={() => {
                     onToggleMinimize();
@@ -414,7 +413,7 @@ const renderContent = () => {
         </div>
         
         <div className={`h-full w-full overflow-hidden transition-opacity duration-200 ${isMinimized ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-            <div className="p-4 h-full w-80 overflow-y-auto">
+            <div className="p-4 h-full w-full sm:w-80 overflow-y-auto">
                 {renderContent()}
             </div>
         </div>
