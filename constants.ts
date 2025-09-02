@@ -1,5 +1,4 @@
 
-
 import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait } from './types';
 
 export const WORLD_SIZE = 80;
@@ -120,13 +119,13 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
     cost: {}, tier: 1, populationCapacity: 100,
     upgradesTo: 'settlement_town', 
     upgradeCost: { 'steamwood_plank': 100, 'iron_ingot': 100 },
-    addsStorage: { 'Raw': 200, 'Processed': 100, 'Component': 50, 'Exotic': 10 },
+    addsResourceCapacity: { 'Raw': 200, 'Processed': 100, 'Component': 50, 'Exotic': 10 },
   },
   { 
     id: 'settlement_town', name: 'Town', assetId: 'infra_settlement_town',
     description: 'A growing town capable of supporting a larger population and more advanced units.',
     cost: {}, tier: 2, populationCapacity: 500,
-    addsStorage: { 'Raw': 1000, 'Processed': 500, 'Component': 250, 'Exotic': 50 },
+    addsResourceCapacity: { 'Raw': 1000, 'Processed': 500, 'Component': 250, 'Exotic': 50 },
   },
 
   // Resource Buildings
@@ -136,8 +135,8 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
   
   // Processing & Storage
   { id: 'infra_forge', name: 'Forge', assetId: 'infra_forge', description: 'Refines 2 Iron Ore into 1 Iron Ingot.', cost: { 'steamwood_plank': 30 }, consumes: { resourceId: 'iron_ore', amount: 2 }, produces: { resourceId: 'iron_ingot', amount: 1 }, tier: 1 },
-  { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsStorage: { 'Raw': 500 }, },
-  { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsStorage: { 'Processed': 250, 'Component': 100 }, },
+  { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsResourceCapacity: { 'Raw': 500 }, },
+  { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsResourceCapacity: { 'Processed': 250, 'Component': 100 }, },
   
   // Research
   { 

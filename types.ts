@@ -153,7 +153,7 @@ export interface Infrastructure {
   upgradeCost?: Record<string, number>;
   populationCapacity?: number;
   multiTile?: { width: number; height: number };
-  addsStorage?: Partial<Record<ResourceTier, number>>; // Changed from addsResourceCapacity
+  addsResourceCapacity?: Partial<Record<ResourceTier, number>>;
   generatesResearchPoints?: number;
 }
 
@@ -208,15 +208,10 @@ export interface DiplomaticRelation {
   opinion: number;
 }
 
-export interface StorageTierData {
-    current: number;
-    capacity: number;
-}
-
 export interface FactionState {
   id: string;
   resources: Record<string, number>;
-  storage: Record<ResourceTier, StorageTierData>; // New storage system
+  resourceCapacity: Record<string, number>;
   leader: Character;
   researchPoints: number;
   unlockedTechs: string[];

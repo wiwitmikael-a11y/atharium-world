@@ -157,7 +157,7 @@ const App: React.FC = () => {
     };
     animationFrame = requestAnimationFrame(smoothPan);
     return () => cancelAnimationFrame(animationFrame);
-  }, [isFollowing, gameState?.selectedUnitId, findUnitLocation, setGameState]);
+  }, [isFollowing, gameState?.selectedUnitId, findUnitLocation]);
 
   // Effect for initial pan to a random faction
   useEffect(() => {
@@ -176,7 +176,7 @@ const App: React.FC = () => {
 
   // Effect for dynamic ambiance sound
   useEffect(() => {
-    if (gamePhase !== 'playing' || !soundManager.isAudioInitialized || !gameState) return;
+    if (gamePhase !== 'playing' || !soundManager.isAudioInitialized) return;
     
     // Calculate center tile from camera pan
     const pan = camera.pan;
@@ -186,7 +186,7 @@ const App: React.FC = () => {
     const tileX = Math.round((centerY + centerX) / 2);
 
     if (tileX >= 0 && tileX < WORLD_SIZE && tileY >= 0 && tileY < WORLD_SIZE) {
-        const biomeId = gameState.world[tileY][tileX]?.biomeId;
+        const biomeId = gameState?.world[tileY][tileX]?.biomeId;
         const biome = BIOMES_MAP.get(biomeId || '');
         if (biome) {
             if (biome.id === 'gloomwell' || biome.id === 'verdant') {
@@ -198,7 +198,7 @@ const App: React.FC = () => {
             }
         }
     }
-  }, [camera.pan, gamePhase, soundManager, gameState]);
+  }, [camera.pan, gamePhase, soundManager, gameState?.world]);
 
 
   const renderGameContent = () => {
