@@ -1,3 +1,11 @@
+
+// FIX: Add Epoch interface for EPOCHS constant
+export interface Epoch {
+  id: string;
+  name: string;
+  synopsis: string;
+}
+
 export interface Trait {
   id: string;
   name: string;

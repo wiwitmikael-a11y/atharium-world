@@ -1,20 +1,20 @@
 
-
-import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait } from './types';
+import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Epoch } from './types';
 
 export const WORLD_SIZE = 80;
 export const TICK_PER_YEAR = 1000;
 export const ATHAR_CAP = 1000000;
 export const STARTING_YEAR = 1453;
 
-export const EPOCHS = Object.freeze([
+// FIX: Change type from Trait[] to Epoch[] to match object properties
+export const EPOCHS: readonly Epoch[] = [
   { id: 'era_of_awakening', name: 'Era of Awakening', synopsis: 'A time of nascent civilizations and untamed wilds. Factions are young, their ambitions just beginning to stir.' },
   { id: 'age_of_steam_sorcery', name: 'Age of Steam & Sorcery', synopsis: 'Invention and magic intertwine. Great cities rise, powered by steam and shielded by enchantments, but the world grows more perilous.' },
   { id: 'the_great_flux', name: 'The Great Flux', synopsis: 'A cataclysmic period where raw magic seeps into the world, twisting landscapes and birthing monstrous creatures. Survival is paramount.' },
   { id: 'epoch_of_the_cog_gods', name: 'Epoch of the Cog-Gods', synopsis: 'Order is forged from chaos. Mighty automatons and towering citadels dominate the land, but at the cost of the world\'s soul.' },
-]);
+];
 
-export const TRAITS: readonly Trait[] = Object.freeze([
+export const TRAITS: readonly Trait[] = [
   { id: 'brave', name: 'Brave', type: 'Good', description: 'Faces danger head-on, inspiring their troops.', effects: 'Unit Attack +5%' },
   { id: 'just', name: 'Just', type: 'Good', description: 'Known for fairness and integrity.', effects: 'Diplomacy Score +10' },
   { id: 'diligent', name: 'Diligent', type: 'Good', description: 'A tireless worker who pushes their people.', effects: 'Production Speed +10%' },
@@ -28,9 +28,9 @@ export const TRAITS: readonly Trait[] = Object.freeze([
   { id: 'dull', name: 'Dull', type: 'Bad', description: 'Slow to grasp new concepts.', effects: 'Research Speed -15%' },
   { id: 'greedy', name: 'Greedy', type: 'Neutral', description: 'Desires wealth above all else.', effects: 'Resource Yield +10%, Diplomacy Score -5' },
   { id: 'ambitious', name: 'Ambitious', type: 'Neutral', description: 'Strives for power and greatness.', effects: 'Research Speed +5%, Diplomacy Score -5' },
-]);
+];
 
-export const CHARACTERS: readonly Character[] = Object.freeze([
+export const CHARACTERS: readonly Character[] = [
   { id: 'char_hephaestus', name: 'Hephaestus', age: 87, traitIds: ['diligent', 'brilliant_strategist'], skills: { martial: 12, diplomacy: 4, stewardship: 18, intrigue: 6, learning: 15 } },
   { id: 'char_cenarius', name: 'Cenarius', age: 450, traitIds: ['just', 'scholar'], skills: { martial: 8, diplomacy: 15, stewardship: 14, intrigue: 5, learning: 19 } },
   { id: 'char_solara', name: 'Solara', age: 34, traitIds: ['gregarious', 'ambitious'], skills: { martial: 10, diplomacy: 18, stewardship: 9, intrigue: 11, learning: 16 } },
@@ -39,9 +39,9 @@ export const CHARACTERS: readonly Character[] = Object.freeze([
   { id: 'char_lyra', name: 'Lyra Whisperwind', age: 211, traitIds: ['brilliant_strategist', 'gregarious'], skills: { martial: 14, diplomacy: 16, stewardship: 11, intrigue: 12, learning: 14 } },
   { id: 'char_malakor', name: 'Malakor the Lich', age: 999, traitIds: ['scholar', 'paranoid'], skills: { martial: 11, diplomacy: 2, stewardship: 13, intrigue: 18, learning: 25 } },
   { id: 'char_grommash', name: 'Grommash Bloodfist', age: 41, traitIds: ['brave', 'ambitious'], skills: { martial: 24, diplomacy: 1, stewardship: 6, intrigue: 7, learning: 3 } },
-]);
+];
 
-export const FACTIONS: readonly Faction[] = Object.freeze([
+export const FACTIONS: readonly Faction[] = [
   { id: 'f1', name: 'The Cogwork Compact', color: 'red-500', archetype: 'Industrial', traits: [{ name: 'Industrious', description: 'Infrastructure and automaton workers are 15% cheaper to build.', effects: [{ type: 'INFRASTRUCTURE_COST_MOD', value: -0.15 }, { type: 'UNIT_COST_MOD', unitRole: 'Worker', value: -0.15 }] }], preferredBiomes: ['ashlands', 'wasteland'], personality: { aggression: 6, expansion: 8, diplomacy: 2 }, techTreeId: 'cogwork_tech' },
   { id: 'f2', name: 'The Verdant Wardens', color: 'green-500', archetype: 'Nature', traits: [{ name: 'Attuned', description: 'Generates 15% more from raw resource deposits.', effects: [{ type: 'PRODUCTION_MOD', resourceTier: 'Raw', value: 0.15 }] }], preferredBiomes: ['verdant', 'gloomwell'], personality: { aggression: 3, expansion: 6, diplomacy: 7 }, techTreeId: 'verdant_tech' },
   { id: 'f3', name: 'The Sunfire Dynasty', color: 'yellow-600', archetype: 'Holy', traits: [{ name: 'Devout', description: 'Population grows 10% faster and their mages (Skirmishers) deal 10% more damage.', effects: [{ type: 'POP_GROWTH_MOD', value: 0.1 }, { type: 'UNIT_STAT_MOD', stat: 'atk', unitRole: 'Skirmisher', value: 0.1 }] }], preferredBiomes: ['verdant', 'tundra'], personality: { aggression: 7, expansion: 7, diplomacy: 4 }, techTreeId: 'sunfire_tech' },
@@ -52,9 +52,9 @@ export const FACTIONS: readonly Faction[] = Object.freeze([
   { id: 'f8', name: 'Crimson Horde', color: 'orange-500', archetype: 'Nomadic', traits: [{ name: 'WAAAGH!', description: 'Their infantry units are filled with battle rage, dealing 10% more damage.', effects: [{ type: 'UNIT_STAT_MOD', stat: 'atk', unitRole: 'Infantry', value: 0.1 }] }], preferredBiomes: ['wasteland', 'ashlands'], personality: { aggression: 10, expansion: 7, diplomacy: 0 }, techTreeId: 'horde_tech' },
   // Non-player faction does not have an archetype
   { id: 'neutral_hostile', name: 'Wildlands Creatures', color: 'gray-600', archetype: 'Nomadic', traits: [{ name: 'Feral', description: 'Unpredictable and aggressive, these creatures deal 10% more damage.', effects: [{ type: 'UNIT_STAT_MOD', stat: 'atk', value: 0.1 }] }], preferredBiomes: [], personality: { aggression: 10, expansion: 0, diplomacy: 0 }, techTreeId: '' },
-]);
+];
 
-export const BIOMES: readonly Biome[] = Object.freeze([
+export const BIOMES: readonly Biome[] = [
     { id: 'gloomwell', name: 'Gloomwell Forest', moveCost: 2, terrainEffects: [
         { description: 'Guerilla Tactics (Nature): +15% ATK, +15% DEF', appliesTo: { factionArchetype: 'Nature' }, effects: [{ stat: 'atk', modifier: 0.15 }, { stat: 'def', modifier: 0.15 }] },
         { description: 'Obstructed Machinery (Industrial): -10% DEF', appliesTo: { factionArchetype: 'Industrial' }, effects: [{ stat: 'def', modifier: -0.1 }] },
@@ -78,7 +78,7 @@ export const BIOMES: readonly Biome[] = Object.freeze([
         { description: 'Unholy Ground (Undead): +15% DEF', appliesTo: { factionArchetype: 'Undead' }, effects: [{ stat: 'def', modifier: 0.15 }] },
         { description: 'Corrupting Influence (Holy): -10% DEF', appliesTo: { factionArchetype: 'Holy' }, effects: [{ stat: 'def', modifier: -0.1 }] },
     ] },
-]);
+];
 
 export const BIOME_PASTEL_COLORS: Record<string, string> = {
     gloomwell: '#8E9EAB',       // Softer Slate Blue
@@ -89,16 +89,16 @@ export const BIOME_PASTEL_COLORS: Record<string, string> = {
     atharium_wastes: '#B5A8C7',// Softer Lavender
 };
 
-export const WORLD_EVENTS: readonly WorldEvent[] = Object.freeze([
+export const WORLD_EVENTS: readonly WorldEvent[] = [
     { id: 'fallen_airship', name: 'Fallen Airship', type: 'Discovery', assetId: 'discovery_fallen_airship', description: 'A colossal wreck of a forgotten sky leviathan, ripe for salvage.' },
     { id: 'ancient_automaton', name: 'Ancient Automaton', type: 'Discovery', assetId: 'discovery_ancient_automaton', description: 'A dormant war machine from a bygone era, its core still faintly glowing.' },
     { id: 'reality_tear', name: 'Reality Tear', type: 'Discovery', assetId: 'discovery_reality_tear', description: 'A shimmering, unstable fissure in the fabric of the world.' },
     { id: 'dragons_maw', name: 'Dragon\'s Maw', type: 'Relic', assetId: 'relic_dragons_maw', description: 'A cavernous opening that pulses with geothermal energy.' },
     { id: 'eye_of_the_watcher', name: 'Eye of the Watcher', type: 'Relic', assetId: 'relic_eye_of_the_watcher', description: 'An ancient monolith that seems to follow your every move.' },
     { id: 'flux_storm', name: 'Flux Storm', type: 'Hazard', assetId: 'hazard_flux_storm', description: 'A chaotic storm of raw magic rips across the landscape.' },
-]);
+];
 
-export const RESOURCES: readonly Resource[] = Object.freeze([
+export const RESOURCES: readonly Resource[] = [
     { id: 'iron_ore', name: 'Iron Ore', tier: 'Raw', biomes: ['ashlands', 'wasteland'], assetId: 'resource_iron_ore', rarity: 'Common' },
     { id: 'steamwood_log', name: 'Steamwood Log', tier: 'Raw', biomes: ['verdant', 'gloomwell'], assetId: 'resource_steamwood_tree', rarity: 'Common' },
     { id: 'chronocrystal_raw', name: 'Raw Chrono-Crystal', tier: 'Raw', biomes: ['atharium_wastes', 'tundra'], assetId: 'resource_chronocrystal', rarity: 'Uncommon' },
@@ -110,9 +110,9 @@ export const RESOURCES: readonly Resource[] = Object.freeze([
     { id: 'refined_chronocrystal', name: 'Refined Chrono-Crystal', tier: 'Processed', assetId: 'resource_refined_chronocrystal', rarity: 'Uncommon' },
     { id: 'clockwork_gear', name: 'Clockwork Gear', tier: 'Component', assetId: 'resource_clockwork_gear', rarity: 'Common' },
     { id: 'athar_capacitor', name: 'Athar Capacitor', tier: 'Component', assetId: 'resource_aether_capacitor', rarity: 'Uncommon' },
-]);
+];
 
-export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
+export const INFRASTRUCTURE: readonly Infrastructure[] = [
   // Settlements
   { 
     id: 'settlement_hamlet', name: 'Hamlet', assetId: 'infra_settlement_hamlet',
@@ -147,17 +147,17 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
     tier: 2, 
     generatesResearchPoints: 0.5 
   },
-]);
+];
 
-export const UNIT_TRAITS: readonly UnitTrait[] = Object.freeze([
+export const UNIT_TRAITS: readonly UnitTrait[] = [
     { id: 'armored', name: 'Armored', description: 'Reduces incoming physical damage by 20%.', effects: [{ type: 'DAMAGE_REDUCTION_PERCENT', value: 0.2 }] },
     { id: 'siege_weapon', name: 'Siege Weapon', description: 'Deals 50% bonus damage to Armored units.', effects: [{ type: 'BONUS_ATTACK_VS_TRAIT', traitId: 'armored', value: 0.5 }] },
     { id: 'feral_strength', name: 'Feral Strength', description: '10% chance to deal a critical hit for 200% damage.', effects: [{ type: 'CRITICAL_CHANCE', chance: 0.1, multiplier: 2.0 }] },
     { id: 'undying', name: 'Undying', description: 'Slowly regenerates health over time.', effects: [{ type: 'HP_REGEN', value: 0.1 }] },
     { id: 'long_range', name: 'Long Range', description: '50% chance to attack before the enemy retaliates.', effects: [{ type: 'FIRST_STRIKE', chance: 0.5 }] },
-]);
+];
 
-export const UNITS: readonly UnitDefinition[] = Object.freeze([
+export const UNITS: readonly UnitDefinition[] = [
     // Faction 1: The Cogwork Compact
     { id: 'automaton_worker', name: 'Automaton Worker', factionId: 'f1', hp: 50, atk: 5, role: 'Worker', assetId: 'unit_citizen_automaton', cost: { 'iron_ingot': 10 }, tier: 1 },
     { id: 'gearforged_soldier', name: 'Gear-Forged Soldier', factionId: 'f1', hp: 110, atk: 12, role: 'Infantry', assetId: 'unit_soldier_gearforged', cost: { 'iron_ingot': 20, 'clockwork_gear': 5 }, tier: 1, traitIds: ['armored'] },
@@ -218,7 +218,7 @@ export const UNITS: readonly UnitDefinition[] = Object.freeze([
     { id: 'aetherwing', name: 'Aetherwing', factionId: 'neutral_hostile', hp: 60, atk: 10, role: 'Skirmisher', assetId: 'unit_beast_aetherwing', cost: {}, tier: 1, traitIds: ['feral_strength'] },
     { id: 'bandit_raider', name: 'Bandit Raider', factionId: 'neutral_hostile', hp: 70, atk: 10, role: 'Infantry', assetId: 'unit_bandit_raider', cost: {}, tier: 1 },
     { id: 'goblin_raider', name: 'Goblin Raider', factionId: 'neutral_hostile', hp: 50, atk: 8, role: 'Infantry', assetId: 'unit_goblin_raider', cost: {}, tier: 1 },
-]);
+];
 
 export const TECH_TREES: Record<string, TechNode[]> = {
     cogwork_tech: [
