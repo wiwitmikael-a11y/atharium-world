@@ -242,7 +242,6 @@ export function generateInitialGameState(): GameState {
   const startingResources = { iron_ore: 10, steamwood_log: 10 };
 
   mainFactions.forEach((faction, index) => {
-    // Initialize storage system
     const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = {
         Raw: { current: 0, capacity: 0 },
         Processed: { current: 0, capacity: 0 },

@@ -1,3 +1,4 @@
+
 const GITHUB_ASSET_BASE_URL = 'https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/';
 const GITHUB_MEDIA_BASE_URL = 'https://cdn.jsdelivr.net/gh/wiwitmikael-a11y/atharium-assets@main/';
 
@@ -42,7 +43,7 @@ export const ASSET_PATHS: Record<string, string> = {
   'resource_steamwood_plank': getAssetUrl('resource_steamwood_plank'),
   'resource_refined_chronocrystal': getAssetUrl('resource_refined_chronocrystal'),
   'resource_clockwork_gear': getAssetUrl('resource_clockwork_gear'),
-  'resource_athar_capacitor': getAssetUrl('resource_athar_capacitor'), // Corrected from aether to athar
+  'resource_athar_capacitor': getAssetUrl('resource_athar_capacitor'),
 
   // Infrastructure
   'infra_settlement_hamlet': getAssetUrl('infra_settlement_hamlet'),
