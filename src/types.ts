@@ -1,5 +1,4 @@
 
-// FIX: Add Epoch interface for EPOCHS constant
 export interface Epoch {
   id: string;
   name: string;

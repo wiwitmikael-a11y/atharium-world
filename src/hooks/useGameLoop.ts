@@ -1,6 +1,7 @@
+
 import { useEffect, useRef } from 'react';
 import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier } from '../types';
-import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, WORLD_SIZE, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCES } from '../constants';
+import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP } from '../constants';
 
 const getFactionOwnedTiles = (world: TileData[][], factionId: string) => world.flat().filter(t => t.ownerFactionId === factionId);
 
@@ -316,18 +317,20 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                         if (!resDef) return;
                         const storageTier = owner.storage[resDef.tier];
                         if (storageTier.current < storageTier.capacity) {
-                            const newAmount = Math.min(owner.resources[resId] || 0 + amount, storageTier.capacity);
-                            const actualAdded = newAmount - (owner.resources[resId] || 0);
-                            owner.resources[resId] = newAmount;
-                            storageTier.current += actualAdded;
+                            const currentAmount = owner.resources[resId] || 0;
+                            const potentialNewAmount = currentAmount + amount;
+                            const amountToAdd = Math.min(amount, storageTier.capacity - storageTier.current);
+                            
+                            owner.resources[resId] = currentAmount + amountToAdd;
+                            storageTier.current += amountToAdd;
                         }
                     };
 
                     if (infra.consumes && infra.produces) { // Processing
+                        const consumesResDef = RESOURCES_MAP.get(infra.consumes.resourceId)!;
                         if ((owner.resources[infra.consumes.resourceId] || 0) >= infra.consumes.amount) {
                             owner.resources[infra.consumes.resourceId] -= infra.consumes.amount;
-                            const resDef = RESOURCES_MAP.get(infra.consumes.resourceId);
-                            if (resDef) owner.storage[resDef.tier].current -= infra.consumes.amount;
+                            owner.storage[consumesResDef.tier].current -= infra.consumes.amount;
                             
                             const prodResDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
                             const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: prodResDef.tier });

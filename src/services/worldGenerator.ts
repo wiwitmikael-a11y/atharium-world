@@ -1,5 +1,6 @@
+
 import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP } from '../constants';
-import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, Resource, ResourceTier } from '../types';
+import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier } from '../types';
 
 function getRandomInt(min: number, max: number): number {
   min = Math.ceil(min);

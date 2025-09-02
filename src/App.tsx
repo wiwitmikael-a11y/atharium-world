@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import type { GameState, TileData, GamePhase, SoundManager } from './types';
+import type { GameState, TileData, GamePhase } from './types';
 import { generateInitialGameState } from './services/worldGenerator';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useCameraControls } from './hooks/useCameraControls';
@@ -9,7 +10,7 @@ import GameMap from './components/GameMap';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import EventTicker from './components/EventTicker';
-import { BIOMES_MAP, FACTIONS_MAP, WORLD_SIZE } from './constants';
+import { BIOMES_MAP, WORLD_SIZE } from './constants';
 import IntroVideo from './components/IntroVideo';
 import StartMenu from './components/StartMenu';
 

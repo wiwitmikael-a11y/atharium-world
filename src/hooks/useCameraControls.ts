@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useCallback } from 'react';
 
 const ZOOM_SENSITIVITY = 0.001;
@@ -73,14 +74,6 @@ export const useCameraControls = (
     const getDistance = (pointers: Map<number, PointerEvent>): number => {
         const [p1, p2] = Array.from(pointers.values());
         return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
-    };
-
-    const getMidpoint = (pointers: Map<number, PointerEvent>): {x: number, y: number} => {
-        const [p1, p2] = Array.from(pointers.values());
-        return {
-            x: (p1.clientX + p2.clientX) / 2,
-            y: (p1.clientY + p2.clientY) / 2,
-        };
     };
 
     const handlePointerDown = (e: PointerEvent) => {

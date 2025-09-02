@@ -6,7 +6,6 @@ export const TICK_PER_YEAR = 1000;
 export const ATHAR_CAP = 1000000;
 export const STARTING_YEAR = 1453;
 
-// FIX: Change type from Trait[] to Epoch[] to match object properties
 export const EPOCHS: readonly Epoch[] = [
   { id: 'era_of_awakening', name: 'Era of Awakening', synopsis: 'A time of nascent civilizations and untamed wilds. Factions are young, their ambitions just beginning to stir.' },
   { id: 'age_of_steam_sorcery', name: 'Age of Steam & Sorcery', synopsis: 'Invention and magic intertwine. Great cities rise, powered by steam and shielded by enchantments, but the world grows more perilous.' },

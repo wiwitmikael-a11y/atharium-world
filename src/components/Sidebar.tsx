@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS } from '../constants';
@@ -247,7 +248,7 @@ const renderContent = () => {
                             <span className="font-mono">{ownerFactionState.population} / {infrastructure?.populationCapacity || 0}</span>
                         </div>
                     )}
-                    {isSettlement ? (
+                    {isSettlement && ownerFactionState.storage ? (
                         <div className="space-y-2">
                             {Object.entries(ownerFactionState.storage).map(([tier, data]) => {
                                 const percentage = data.capacity > 0 ? (data.current / data.capacity) * 100 : 0;
