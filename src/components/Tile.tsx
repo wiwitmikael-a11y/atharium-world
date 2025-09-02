@@ -79,6 +79,7 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
         transform: `translate(${screenX - TILE_WIDTH / 2}px, ${screenY - TILE_CONTAINER_HEIGHT / 2}px)`,
         width: `${TILE_WIDTH}px`,
         height: `${TILE_CONTAINER_HEIGHT}px`,
+        backfaceVisibility: 'hidden',
       }}
       onClick={onSelect}
       role="button"

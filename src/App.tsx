@@ -12,6 +12,9 @@ import EventTicker from './components/EventTicker';
 import { BIOMES_MAP, WORLD_SIZE } from './constants';
 import IntroVideo from './components/IntroVideo';
 import StartMenu from './components/StartMenu';
+import { ASSET_PATHS } from './assets';
+import { useAssetLoader } from './hooks/useAssetLoader';
+import LoadingScreen from './components/LoadingScreen';
 
 const TILE_WIDTH = 128;
 const TILE_VISUAL_HEIGHT = 64;
@@ -29,6 +32,7 @@ const App: React.FC = () => {
   
   const [camera, setCamera] = useState({ pan: initialPan, zoom: 0.5 });
   const soundManager = useSoundManager(camera.zoom);
+  const { isLoading: assetsLoading, progress, loadingMessage } = useAssetLoader(Object.values(ASSET_PATHS), gamePhase === 'loading');
   
   const mapContainerRef = useCameraControls(setCamera, camera.zoom, setIsFollowing, gamePhase === 'playing' && soundManager.isAudioInitialized);
 
@@ -119,12 +123,19 @@ const App: React.FC = () => {
   }, [soundManager, initialPan]);
 
   const handleStart = useCallback(() => {
-    const initialState = generateInitialGameState();
-    setGameState(initialState);
-    soundManager.initializeAudio();
-    setGamePhase('playing');
-    hasPannedToStartRef.current = false;
-  }, [soundManager]);
+    setGamePhase('loading');
+  }, []);
+
+  // Effect to handle transition from loading to playing
+  useEffect(() => {
+    if (gamePhase === 'loading' && !assetsLoading) {
+        const initialState = generateInitialGameState();
+        setGameState(initialState);
+        soundManager.initializeAudio();
+        setGamePhase('playing');
+        hasPannedToStartRef.current = false;
+    }
+  }, [gamePhase, assetsLoading, soundManager]);
 
   // Effect for smooth camera follow
   useEffect(() => {
@@ -207,6 +218,9 @@ const App: React.FC = () => {
     }
     if (gamePhase === 'menu') {
       return <StartMenu onStart={handleStart} />;
+    }
+     if (gamePhase === 'loading') {
+      return <LoadingScreen progress={progress} loadingMessage={loadingMessage} />;
     }
     if (gamePhase === 'playing' && gameState && soundManager.isAudioInitialized) {
       return (

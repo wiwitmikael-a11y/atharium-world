@@ -20,7 +20,7 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
 
   return (
     <div 
-      className="relative w-full h-full overflow-hidden" 
+      className="relative w-full h-full overflow-hidden bg-gray-900" 
     >
         <div 
           className="absolute top-1/2 left-1/2 transition-transform duration-100 ease-linear"

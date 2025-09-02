@@ -153,7 +153,6 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedTile, gameState, onSelectUnit
     
     const characters: { name: string; isLeader: boolean; location: {x: number, y: number} }[] = [];
     
-    // 1. Leader
     const leader = ownerFactionState.leader;
     let leaderLocation: {x: number, y: number} | null = null;
     

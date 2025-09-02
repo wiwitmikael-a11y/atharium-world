@@ -1,4 +1,5 @@
 
+
 export interface Epoch {
   id: string;
   name: string;
@@ -254,4 +255,4 @@ export interface SoundManager {
   isAudioInitialized: boolean;
 }
 
-export type GamePhase = 'intro' | 'menu' | 'playing';
+export type GamePhase = 'intro' | 'menu' | 'loading' | 'playing';
