@@ -42,6 +42,7 @@ export const ASSET_PATHS: Record<string, string> = {
   'resource_steamwood_plank': getAssetUrl('resource_steamwood_plank'),
   'resource_refined_chronocrystal': getAssetUrl('resource_refined_chronocrystal'),
   'resource_clockwork_gear': getAssetUrl('resource_clockwork_gear'),
+  // FIX: Corrected asset path from 'resource_aether_capacitor' to 'resource_athar_capacitor'
   'resource_athar_capacitor': getAssetUrl('resource_athar_capacitor'), // Corrected from aether to athar
 
   // Infrastructure

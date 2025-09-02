@@ -1,4 +1,5 @@
 
+
 import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Epoch } from './types';
 
 export const WORLD_SIZE = 80;
@@ -108,7 +109,8 @@ export const RESOURCES: readonly Resource[] = [
     { id: 'steamwood_plank', name: 'Steamwood Plank', tier: 'Processed', assetId: 'resource_steamwood_plank', rarity: 'Common' },
     { id: 'refined_chronocrystal', name: 'Refined Chrono-Crystal', tier: 'Processed', assetId: 'resource_refined_chronocrystal', rarity: 'Uncommon' },
     { id: 'clockwork_gear', name: 'Clockwork Gear', tier: 'Component', assetId: 'resource_clockwork_gear', rarity: 'Common' },
-    { id: 'athar_capacitor', name: 'Athar Capacitor', tier: 'Component', assetId: 'resource_aether_capacitor', rarity: 'Uncommon' },
+    // FIX: Corrected assetId from 'resource_aether_capacitor' to 'resource_athar_capacitor'
+    { id: 'athar_capacitor', name: 'Athar Capacitor', tier: 'Component', assetId: 'resource_athar_capacitor', rarity: 'Uncommon' },
 ];
 
 export const INFRASTRUCTURE: readonly Infrastructure[] = [

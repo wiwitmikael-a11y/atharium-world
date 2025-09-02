@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { GameState, TileData, GamePhase } from './types';
@@ -158,7 +159,8 @@ const App: React.FC = () => {
     };
     animationFrame = requestAnimationFrame(smoothPan);
     return () => cancelAnimationFrame(animationFrame);
-  }, [isFollowing, gameState?.selectedUnitId, findUnitLocation, setGameState]);
+    // FIX: Removed setGameState from dependency array as it's a stable function from useState
+  }, [isFollowing, gameState?.selectedUnitId, findUnitLocation]);
 
   // Effect for initial pan to a random faction
   useEffect(() => {

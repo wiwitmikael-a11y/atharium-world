@@ -1,4 +1,5 @@
 
+
 import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait } from './types';
 
 export const WORLD_SIZE = 80;
@@ -108,9 +109,11 @@ export const RESOURCES: readonly Resource[] = Object.freeze([
     { id: 'steamwood_plank', name: 'Steamwood Plank', tier: 'Processed', assetId: 'resource_steamwood_plank', rarity: 'Common' },
     { id: 'refined_chronocrystal', name: 'Refined Chrono-Crystal', tier: 'Processed', assetId: 'resource_refined_chronocrystal', rarity: 'Uncommon' },
     { id: 'clockwork_gear', name: 'Clockwork Gear', tier: 'Component', assetId: 'resource_clockwork_gear', rarity: 'Common' },
-    { id: 'athar_capacitor', name: 'Athar Capacitor', tier: 'Component', assetId: 'resource_aether_capacitor', rarity: 'Uncommon' },
+    // FIX: Corrected assetId from 'resource_aether_capacitor' to 'resource_athar_capacitor'
+    { id: 'athar_capacitor', name: 'Athar Capacitor', tier: 'Component', assetId: 'resource_athar_capacitor', rarity: 'Uncommon' },
 ]);
 
+// FIX: Changed addsResourceCapacity to addsStorage to align with refactor
 export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
   // Settlements
   { 
@@ -119,13 +122,13 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
     cost: {}, tier: 1, populationCapacity: 100,
     upgradesTo: 'settlement_town', 
     upgradeCost: { 'steamwood_plank': 100, 'iron_ingot': 100 },
-    addsResourceCapacity: { 'Raw': 200, 'Processed': 100, 'Component': 50, 'Exotic': 10 },
+    addsStorage: { 'Raw': 200, 'Processed': 100, 'Component': 50, 'Exotic': 10 },
   },
   { 
     id: 'settlement_town', name: 'Town', assetId: 'infra_settlement_town',
     description: 'A growing town capable of supporting a larger population and more advanced units.',
     cost: {}, tier: 2, populationCapacity: 500,
-    addsResourceCapacity: { 'Raw': 1000, 'Processed': 500, 'Component': 250, 'Exotic': 50 },
+    addsStorage: { 'Raw': 1000, 'Processed': 500, 'Component': 250, 'Exotic': 50 },
   },
 
   // Resource Buildings
@@ -135,8 +138,8 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
   
   // Processing & Storage
   { id: 'infra_forge', name: 'Forge', assetId: 'infra_forge', description: 'Refines 2 Iron Ore into 1 Iron Ingot.', cost: { 'steamwood_plank': 30 }, consumes: { resourceId: 'iron_ore', amount: 2 }, produces: { resourceId: 'iron_ingot', amount: 1 }, tier: 1 },
-  { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsResourceCapacity: { 'Raw': 500 }, },
-  { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsResourceCapacity: { 'Processed': 250, 'Component': 100 }, },
+  { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsStorage: { 'Raw': 500 }, },
+  { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsStorage: { 'Processed': 250, 'Component': 100 }, },
   
   // Research
   { 

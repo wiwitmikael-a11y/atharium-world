@@ -1,3 +1,4 @@
+
 export interface Trait {
   id: string;
   name: string;
@@ -153,7 +154,8 @@ export interface Infrastructure {
   upgradeCost?: Record<string, number>;
   populationCapacity?: number;
   multiTile?: { width: number; height: number };
-  addsResourceCapacity?: Partial<Record<ResourceTier, number>>;
+  // FIX: Changed from addsResourceCapacity to addsStorage to match refactor in src/
+  addsStorage?: Partial<Record<ResourceTier, number>>;
   generatesResearchPoints?: number;
 }
 
@@ -208,10 +210,16 @@ export interface DiplomaticRelation {
   opinion: number;
 }
 
+export interface StorageTierData {
+    current: number;
+    capacity: number;
+}
+
+// FIX: Refactored FactionState to use new storage system to match src/
 export interface FactionState {
   id: string;
   resources: Record<string, number>;
-  resourceCapacity: Record<string, number>;
+  storage: Record<ResourceTier, StorageTierData>; // New storage system
   leader: Character;
   researchPoints: number;
   unlockedTechs: string[];

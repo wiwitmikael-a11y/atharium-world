@@ -1,5 +1,6 @@
-import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP } from '../constants';
-import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, Resource } from '../types';
+
+import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP } from '../constants';
+import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier } from '../types';
 
 function getRandomInt(min: number, max: number): number {
   min = Math.ceil(min);
@@ -238,18 +239,37 @@ export function generateInitialGameState(): GameState {
   const factionStates: Record<string, FactionState> = {};
   const mainFactions = FACTIONS.filter(f => f.id !== 'neutral_hostile');
   
-  // Pre-calculate the initial resource capacity based on the starting Hamlet
-  const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet');
-  const initialCapacityByTier = hamletDef?.addsResourceCapacity || {};
-  const initialCapacityPerResource: Record<string, number> = {};
-  RESOURCES.forEach(res => {
-      initialCapacityPerResource[res.id] = initialCapacityByTier[res.tier] || 0;
-  });
+  const startingResources = { iron_ore: 10, steamwood_log: 10 };
 
   mainFactions.forEach((faction, index) => {
+    // FIX: Initialize storage system to match refactored types
+    const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = {
+        Raw: { current: 0, capacity: 0 },
+        Processed: { current: 0, capacity: 0 },
+        Component: { current: 0, capacity: 0 },
+        Exotic: { current: 0, capacity: 0 },
+    };
+
+    // Add capacity from starting Hamlet
+    const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet');
+    if (hamletDef?.addsStorage) {
+        for (const [tier, amount] of Object.entries(hamletDef.addsStorage)) {
+            initialStorage[tier as ResourceTier].capacity = amount;
+        }
+    }
+
+    // Calculate initial resource usage
+    for (const [resId, amount] of Object.entries(startingResources)) {
+        const resDef = RESOURCES_MAP.get(resId);
+        if (resDef) {
+            initialStorage[resDef.tier].current += amount;
+        }
+    }
+
     factionStates[faction.id] = {
       id: faction.id,
-      resources: { iron_ore: 10, steamwood_log: 10 },
+      resources: startingResources,
+      storage: initialStorage,
       leader: CHARACTERS[index % CHARACTERS.length], // Assign leaders cyclically
       researchPoints: 0,
       unlockedTechs: [],
@@ -257,7 +277,6 @@ export function generateInitialGameState(): GameState {
       population: 10, // Starting population is smaller
       leaderStatus: 'settled',
       diplomacy: {},
-      resourceCapacity: initialCapacityPerResource,
     };
   });
 
