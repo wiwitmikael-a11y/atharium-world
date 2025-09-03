@@ -69,6 +69,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                             Enter World
                         </button>
                     </form>
+                    <p className="mt-6 text-cyan-300 text-sm font-mono copyright-glow">
+                        © 2025 Rangga x Atharrazka
+                    </p>
                 </div>
             </div>
         </div>

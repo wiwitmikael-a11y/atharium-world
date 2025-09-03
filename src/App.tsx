@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 // FIX: Corrected import paths for consistency with project structure
-import type { GameState, TileData, GamePhase, SoundManager } from './types';
+import type { GameState, TileData, GamePhase } from './types';
 import { generateInitialGameState } from './services/worldGenerator';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useCameraControls } from './hooks/useCameraControls';
