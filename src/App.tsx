@@ -17,6 +17,7 @@ import LoginScreen from './components/LoginScreen';
 import LoadingScreen from './components/LoadingScreen';
 import { useAssetLoader } from './hooks/useAssetLoader';
 import { ASSET_PATHS } from './assets';
+import HelpModal from './components/HelpModal';
 
 
 const TILE_WIDTH = 128;
@@ -30,6 +31,8 @@ const App: React.FC = () => {
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [username, setUsername] = useState('');
   const [saveExists, setSaveExists] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isFirstTimeSession, setIsFirstTimeSession] = useState(false);
   
   const targetPanRef = useRef({ x: 0, y: 0 });
   const hasPannedToStartRef = useRef(false);
@@ -135,6 +138,8 @@ const App: React.FC = () => {
         soundManager.initializeAudio();
         setGamePhase('loading');
         hasPannedToStartRef.current = false;
+        setIsHelpOpen(true);
+        setIsFirstTimeSession(true);
     }, [soundManager]);
 
     const handleLoadGame = useCallback(() => {
@@ -147,6 +152,7 @@ const App: React.FC = () => {
                     soundManager.initializeAudio();
                     setGamePhase('loading');
                     hasPannedToStartRef.current = false;
+                    setIsFirstTimeSession(false);
                 } catch (error) {
                     console.error("Failed to load game state, starting a new game:", error);
                     handleNewGame();
@@ -166,6 +172,7 @@ const App: React.FC = () => {
       setGameState(null);
       setGamePhase('menu');
       setCamera({ pan: initialPan, zoom: 0.5 });
+      setIsFirstTimeSession(false);
   }, [soundManager, initialPan]);
   
   const allAssetUrls = useMemo(() => Object.values(ASSET_PATHS), []);
@@ -272,7 +279,6 @@ const App: React.FC = () => {
         <div className="relative w-full h-full">
           <main ref={mapContainerRef} className="w-full h-full relative">
             <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
-            {/* FIX: Corrected props for Header component, passing the full gameState and onSaveGame handler */}
             <Header
               gameState={gameState}
               gameSpeed={gameSpeed}
@@ -281,6 +287,7 @@ const App: React.FC = () => {
               onResetWorld={handleResetWorld}
               onExitToMenu={handleExitToMenu}
               onSaveGame={handleSaveGame}
+              onToggleHelp={() => setIsHelpOpen(p => !p)}
             />
             <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
           </main>
@@ -293,6 +300,7 @@ const App: React.FC = () => {
             isMinimized={isSidebarMinimized}
             onToggleMinimize={() => setIsSidebarMinimized(p => !p)}
           />
+          {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} isFirstTime={isFirstTimeSession} />}
         </div>
       );
     }

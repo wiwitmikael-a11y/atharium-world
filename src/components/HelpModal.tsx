@@ -3,9 +3,10 @@ import Icon from './Icon';
 
 interface HelpModalProps {
   onClose: () => void;
+  isFirstTime?: boolean;
 }
 
-const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
+const HelpModal: React.FC<HelpModalProps> = ({ onClose, isFirstTime = false }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,7 +37,15 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
       >
         <header className="flex items-center justify-between p-4 border-b border-cyan-500/30">
           <h2 className="text-2xl font-cinzel text-cyan-300">Help & Instructions</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+          <button 
+            onClick={onClose} 
+            className={`p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors ${isFirstTime ? 'selection-glow' : ''}`}
+            aria-label="Close help"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </header>
         <main className="p-6 overflow-y-auto space-y-6">
           <section>

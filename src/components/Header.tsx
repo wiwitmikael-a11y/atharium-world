@@ -3,7 +3,6 @@ import type { GameState, SoundManager } from '../types';
 import { EPOCHS, TICK_PER_YEAR, STARTING_YEAR } from '../constants';
 import Icon from './Icon';
 import SettingsMenu from './SettingsMenu';
-import HelpModal from './HelpModal';
 import InfoTooltip from './InfoTooltip';
 
 interface HeaderProps {
@@ -14,6 +13,7 @@ interface HeaderProps {
   onResetWorld: () => void;
   onExitToMenu: () => void;
   onSaveGame: () => void;
+  onToggleHelp: () => void;
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -26,11 +26,10 @@ const formatMintedAthar = (num: number) => {
     }).format(num);
 }
 
-const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu, onSaveGame }) => {
+const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu, onSaveGame, onToggleHelp }) => {
   const { gameTime, totalMintedAthar } = gameState;
   const epochInfo = EPOCHS.find(e => e.id === gameTime.epoch);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -103,7 +102,7 @@ const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, sound
               </div>
               <button
                   onClick={() => {
-                      setIsHelpOpen(true);
+                      onToggleHelp();
                       soundManager.playSFX('ui_click_subtle');
                   }}
                   className="p-2 bg-gray-800 border border-gray-700 rounded-full hover:bg-gray-700 transition-colors"
@@ -184,8 +183,6 @@ const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, sound
           <p className="mt-2 text-xs text-gray-400">Higher levels of minted $ATHAR may trigger world-changing events or unlock new possibilities.</p>
         </InfoTooltip>
       )}
-
-      {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} />}
     </>
   );
 };
