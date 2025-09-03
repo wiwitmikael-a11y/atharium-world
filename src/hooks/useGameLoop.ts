@@ -1,8 +1,9 @@
 
-
 import { useEffect, useRef } from 'react';
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier } from '../types';
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, FactionArchetype } from '../types';
 import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP } from '../constants';
+
+const FACTION_POWER_CACHE: Record<string, { power: number, tick: number }> = {};
 
 const getFactionOwnedTiles = (world: TileData[][], factionId: string) => world.flat().filter(t => t.ownerFactionId === factionId);
 
@@ -109,7 +110,7 @@ const recalculateStorage = (factionState: FactionState, ownedTiles: TileData[]) 
 };
 
 const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: TileData[][], tick: number, nextUnitId: number, soundManager: SoundManager): number => {
-    if (tick % 101 !== 0) return nextUnitId; // Run on a different tick than expansion
+    if (tick % 101 !== 0) return nextUnitId;
 
     const factionInfo = FACTIONS_MAP.get(faction.id)!;
     const infraCostMod = getFactionModifier(factionInfo, 'INFRASTRUCTURE_COST_MOD');
@@ -118,19 +119,42 @@ const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: T
     const settlementTiles = ownedTiles.filter(t => t.infrastructureId?.startsWith('settlement_'));
     for (const tile of settlementTiles) {
         const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId!);
-        if (infra?.upgradesTo && infra.upgradeCost) {
-            const modifiedUpgradeCost = getModifiedCost(infra.upgradeCost, infraCostMod);
-            const canAfford = Object.entries(modifiedUpgradeCost).every(([resId, amount]) => (faction.resources[resId] || 0) >= amount);
-            const meetsPopulation = faction.population >= (infra.populationCapacity || 0) * 0.8;
+        if (infra?.upgradeCost) {
+            let targetUpgradeId: string | undefined = infra.upgradesTo;
 
-            if (canAfford && meetsPopulation) {
-                Object.entries(modifiedUpgradeCost).forEach(([resId, amount]) => { faction.resources[resId] -= amount; });
-                world[tile.y][tile.x].infrastructureId = infra.upgradesTo;
-                soundManager.playSFX('sfx_build_complete');
-                break; // Only one upgrade per tick
+            // Dynamic upgrade logic for multi-tiered, archetype-specific settlements
+            if (infra.id.startsWith('settlement_')) {
+                if (infra.id === 'settlement_town') {
+                    // Special case for Sylvan Elves who share the Nature archetype but have unique assets
+                    if (factionInfo.id === 'f6') {
+                        targetUpgradeId = 'settlement_city_elf';
+                    } else {
+                        targetUpgradeId = `settlement_city_${factionInfo.archetype.toLowerCase()}`;
+                    }
+                } else if (infra.id.startsWith('settlement_city_')) {
+                    if (factionInfo.id === 'f6') {
+                        targetUpgradeId = 'settlement_metropolis_elf';
+                    } else {
+                        targetUpgradeId = `settlement_metropolis_${factionInfo.archetype.toLowerCase()}`;
+                    }
+                }
+            }
+            
+            if (targetUpgradeId && INFRASTRUCTURE_MAP.has(targetUpgradeId)) {
+                const modifiedUpgradeCost = getModifiedCost(infra.upgradeCost, infraCostMod);
+                const canAfford = Object.entries(modifiedUpgradeCost).every(([resId, amount]) => (faction.resources[resId] || 0) >= amount);
+                const meetsPopulation = faction.population >= (infra.populationCapacity || 0) * 0.8;
+
+                if (canAfford && meetsPopulation) {
+                    Object.entries(modifiedUpgradeCost).forEach(([resId, amount]) => { faction.resources[resId] -= amount; });
+                    world[tile.y][tile.x].infrastructureId = targetUpgradeId;
+                    soundManager.playSFX('sfx_build_complete');
+                    break; // Only one upgrade per tick
+                }
             }
         }
     }
+
 
     // 2. Unit Training Logic
     const totalPopulationCapacity = settlementTiles.reduce((sum, tile) => sum + (INFRASTRUCTURE_MAP.get(tile.infrastructureId!)?.populationCapacity || 0), 0);
@@ -196,62 +220,146 @@ const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileD
     return nextUnitId;
 }
 
-const runDiplomacyAI = (newState: GameState, faction: FactionState, factionId: string, allFactions: Record<string, FactionState>): void => {
+const calculateFactionPower = (factionId: string, world: TileData[][], allFactions: Record<string, FactionState>): number => {
     const factionInfo = FACTIONS_MAP.get(factionId);
-    if (!factionInfo) return;
+    const factionState = allFactions[factionId];
+    if (!factionInfo || !factionState) return 0;
+
+    // 1. Army Power
+    let armyPower = 0;
+    const units = world.flat().flatMap(t => t.units).filter(u => u.factionId === factionId);
+    units.forEach(unit => {
+        const unitDef = UNITS_MAP.get(unit.unitId);
+        if (unitDef) {
+            armyPower += unitDef.hp + (unitDef.atk * 5); // Value attack more
+        }
+    });
+
+    // 2. Territory Power
+    const territoryPower = getFactionOwnedTiles(world, factionId).length * 10;
+
+    // 3. Tech Power
+    const techPower = factionState.unlockedTechs.length * 50;
+
+    return Math.floor(armyPower + territoryPower + techPower);
+};
+
+const getArchetypeOpinionModifier = (arch1: FactionArchetype, arch2: FactionArchetype): number => {
+    if (arch1 === arch2) return 10;
+
+    const rivalries: Record<string, string[]> = {
+        'Holy': ['Undead', 'Shadow'],
+        'Nature': ['Industrial'],
+        'Industrial': ['Nature'],
+        'Undead': ['Holy'],
+        'Shadow': ['Holy'],
+    };
+    
+    if (rivalries[arch1]?.includes(arch2)) return -50;
+
+    return 0;
+};
+
+const runDiplomacyAI = (newState: GameState, factionId: string): void => {
+    const allFactions = newState.factions;
+    const faction = allFactions[factionId];
+    const factionInfo = FACTIONS_MAP.get(factionId);
+    if (!factionInfo || !factionInfo.personality || factionInfo.id === 'neutral_hostile') return;
+
+    // Use a cache to avoid recalculating power for every single faction pair
+    const calculateAndCacheFactionPower = (fId: string) => {
+        if (FACTION_POWER_CACHE[fId] && FACTION_POWER_CACHE[fId].tick === newState.gameTime.tick) {
+            return FACTION_POWER_CACHE[fId].power;
+        }
+        const power = calculateFactionPower(fId, newState.world, allFactions);
+        FACTION_POWER_CACHE[fId] = { power, tick: newState.gameTime.tick };
+        return power;
+    };
+    
+    const myPower = calculateAndCacheFactionPower(factionId);
 
     for (const otherFactionId in faction.diplomacy) {
         if (factionId === otherFactionId) continue;
+        
+        const otherFaction = allFactions[otherFactionId];
+        const otherFactionInfo = FACTIONS_MAP.get(otherFactionId);
+        if (!otherFaction || !otherFactionInfo) continue;
 
         const relation = faction.diplomacy[otherFactionId];
-        const otherFactionInfo = FACTIONS_MAP.get(otherFactionId);
-        if (!otherFactionInfo) return;
-        
-        // Opinion drift (border friction, general distrust)
-        relation.opinion -= 0.01;
+        const theirRelationToUs = otherFaction.diplomacy[factionId];
+        if (!relation || !theirRelationToUs) continue;
 
-        // War Declaration Logic (influenced by aggression)
-        const warThreshold = -100 + factionInfo.personality.aggression * 6; // Aggression 10 -> -40; Aggression 1 -> -94
-        const warChance = factionInfo.personality.aggression / 500; // Aggression 10 -> 2% chance per tick
-        if (relation.status === 'Neutral' && relation.opinion < warThreshold && Math.random() < warChance) {
-           relation.status = 'War';
-           allFactions[otherFactionId].diplomacy[factionId].status = 'War';
-           relation.opinion = -100;
-           allFactions[otherFactionId].diplomacy[factionId].opinion = -100;
-           // Find a location for the event
-           const factionTile = newState.world.flat().find(t => t.ownerFactionId === factionId);
-           if (factionTile) {
-               addGameEvent(newState, `${factionInfo.name} declared war on ${otherFactionInfo.name}!`, {x: factionTile.x, y: factionTile.y});
-           }
+        const theirPower = calculateAndCacheFactionPower(otherFactionId);
+        
+        // --- Opinion Modifiers ---
+        let opinionChange = -0.01; // Base decay (distrust, border friction)
+
+        if (newState.gameTime.tick % 500 === 1) { // Periodically apply ideological drift
+             const archetypeMod = getArchetypeOpinionModifier(factionInfo.archetype, otherFactionInfo.archetype) / 100;
+             opinionChange += archetypeMod;
         }
         
-        // Alliance Proposal Logic (influenced by diplomacy)
-        const allianceThreshold = 100 - factionInfo.personality.diplomacy * 6; // Diplomacy 10 -> 40; Diplomacy 1 -> 94
-        const allianceChance = factionInfo.personality.diplomacy / 500; // Diplomacy 10 -> 2% chance
-        if (relation.status === 'Neutral' && relation.opinion > allianceThreshold) {
-             const theirOpinionOfUs = allFactions[otherFactionId].diplomacy[factionId].opinion;
-             const theirAllianceThreshold = 100 - otherFactionInfo.personality.diplomacy * 6;
-             if (theirOpinionOfUs > theirAllianceThreshold && Math.random() < allianceChance) {
-                relation.status = 'Alliance';
-                allFactions[otherFactionId].diplomacy[factionId].status = 'Alliance';
-                relation.opinion = 100;
-                allFactions[otherFactionId].diplomacy[factionId].opinion = 100;
-             }
+        const powerRatio = myPower > 0 ? theirPower / myPower : 999;
+        if (powerRatio > 1.8) { // They are much stronger, feel threatened
+            opinionChange -= 0.05 * (factionInfo.personality.aggression / 10);
         }
         
-        // Peace (war weariness)
-        if (relation.status === 'War') {
-            relation.opinion += 0.05; // Slowly recover towards peace
-            if (relation.opinion > -20 && Math.random() < 0.01) {
+        let hasCommonEnemy = false;
+        for (const enemyId in faction.diplomacy) {
+            if (faction.diplomacy[enemyId].status === 'War' && otherFaction.diplomacy[enemyId]?.status === 'War') {
+                hasCommonEnemy = true;
+                break;
+            }
+        }
+        if (hasCommonEnemy) {
+            opinionChange += 0.1;
+        }
+
+        relation.opinion = Math.max(-200, Math.min(200, relation.opinion + opinionChange));
+        
+        const factionTile = newState.world.flat().find(t => t.ownerFactionId === factionId);
+        const location = factionTile ? { x: factionTile.x, y: factionTile.y } : { x: 0, y: 0 };
+
+        // --- Decision Making ---
+        const aggressionFactor = factionInfo.personality.aggression / 10.0;
+        const diplomacyFactor = factionInfo.personality.diplomacy / 10.0;
+        
+        if (relation.status === 'Neutral') {
+            const powerAdvantage = myPower > theirPower * (1.6 - (aggressionFactor * 0.6));
+            const warThreshold = -50 - (aggressionFactor * 50);
+            
+            if (powerAdvantage && relation.opinion < warThreshold && Math.random() < (aggressionFactor / 150)) {
+                relation.status = 'War';
+                theirRelationToUs.status = 'War';
+                const opinionHit = -100 - (aggressionFactor * 50);
+                relation.opinion = opinionHit;
+                theirRelationToUs.opinion = opinionHit;
+                addGameEvent(newState, `${factionInfo.name} declared war on ${otherFactionInfo.name}!`, location);
+            } else {
+                const allianceThreshold = 60 + (diplomacyFactor * 40);
+                if (relation.opinion > allianceThreshold && theirRelationToUs.opinion > allianceThreshold && Math.random() < (diplomacyFactor / 150)) {
+                    relation.status = 'Alliance';
+                    theirRelationToUs.status = 'Alliance';
+                    relation.opinion = 200;
+                    theirRelationToUs.opinion = 200;
+                    addGameEvent(newState, `${factionInfo.name} and ${otherFactionInfo.name} have formed an alliance!`, location);
+                }
+            }
+        } else if (relation.status === 'War') {
+            relation.opinion += 0.1; // War weariness
+            const peaceThreshold = -50;
+            const powerDisadvantage = myPower < theirPower * 0.6;
+            
+            if ((powerDisadvantage || relation.opinion > peaceThreshold) && Math.random() < 0.02) {
                 relation.status = 'Neutral';
-                allFactions[otherFactionId].diplomacy[factionId].status = 'Neutral';
-                relation.opinion = -50; // Truce, not friends yet
-                allFactions[otherFactionId].diplomacy[factionId].opinion = -50;
+                theirRelationToUs.status = 'Neutral';
+                relation.opinion = -50;
+                theirRelationToUs.opinion = -50;
+                addGameEvent(newState, `${factionInfo.name} and ${otherFactionInfo.name} have signed a peace treaty.`, location);
             }
         }
     }
 };
-
 
 const processGameTick = (prevState: GameState, soundManager: SoundManager): GameState => {
     const newState: GameState = JSON.parse(JSON.stringify(prevState));
@@ -326,7 +434,19 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                         }
                     };
 
-                    if (infra.consumes && infra.produces) { // Processing
+                    if (infra.id === 'infra_arcane_enchanter' && infra.consumes && infra.produces) {
+                        const consumesResDef = RESOURCES_MAP.get(infra.consumes.resourceId)!;
+                         if ((owner.resources[infra.consumes.resourceId] || 0) >= infra.consumes.amount) {
+                            owner.resources[infra.consumes.resourceId] -= infra.consumes.amount;
+                            owner.storage[consumesResDef.tier].current -= infra.consumes.amount;
+                            
+                            const prodResDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
+                            processResource(infra.produces.resourceId, infra.produces.amount);
+
+                            // Mint $ATHAR for the world
+                            newState.totalMintedAthar += infra.produces.amount * 10;
+                         }
+                    } else if (infra.consumes && infra.produces) { // Processing
                         const consumesResDef = RESOURCES_MAP.get(infra.consumes.resourceId)!;
                         if ((owner.resources[infra.consumes.resourceId] || 0) >= infra.consumes.amount) {
                             owner.resources[infra.consumes.resourceId] -= infra.consumes.amount;
@@ -336,11 +456,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                             const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: prodResDef.tier });
                             const finalAmount = infra.produces.amount * (1 + productionBonus);
                             processResource(infra.produces.resourceId, finalAmount);
-                            
-                            // Increment total minted Athar if it's an Arcane Enchanter
-                            if (infra.id === 'infra_arcane_enchanter' && infra.produces.resourceId === 'refined_chronocrystal') {
-                                newState.totalMintedAthar += finalAmount;
-                            }
                         }
                     } else if (infra.produces) { // Generating
                         if (!infra.requiresResourceId || infra.requiresResourceId === tile.resourceId) {
@@ -372,12 +487,12 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
         // Leader Adventures
         newState.nextUnitId = runLeaderAI(faction, ownedTiles, newState.world, newState.gameTime.tick, newState.nextUnitId);
 
-        // Diplomacy (War, Alliances) - every 151 ticks
-        if (newState.gameTime.tick % 151 === 0) {
-            runDiplomacyAI(newState, faction, factionId, newState.factions);
+        // Diplomacy (War, Alliances)
+        if (newState.gameTime.tick > 1 && newState.gameTime.tick % 151 === 0) {
+            runDiplomacyAI(newState, factionId);
         }
 
-        // Expansion (Build new infra) - every 50 ticks, chance based on personality
+        // Expansion (Build new infra)
         if (newState.gameTime.tick > 1 && newState.gameTime.tick % 50 === 0) {
             const factionInfo = FACTIONS_MAP.get(factionId);
             if (!factionInfo) continue;
@@ -404,7 +519,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                     let buildChoice: { tile: TileData, infra: InfraType } | null = null;
                     const infraCostMod = getFactionModifier(factionInfo, 'INFRASTRUCTURE_COST_MOD');
 
-                    // Priority 1: Build resource extractors if affordable and there's storage
+                    // Priority 1: Build resource extractors
                     const extractorCandidates = buildSites
                         .map(site => {
                             if (site.resourceId) {
@@ -435,7 +550,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                         }
                     }
 
-                    // Priority 2: Build a forge if we have a lot of ore and storage for ingots
+                    // Priority 2: Build a forge
                     if (!buildChoice && (faction.resources['iron_ore'] || 0) > 50) {
                         const forgeDef = INFRASTRUCTURE_MAP.get('infra_forge');
                         if (forgeDef) {
@@ -456,7 +571,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                     if (buildChoice) {
                         const { tile, infra } = buildChoice;
                         const modifiedCost = getModifiedCost(infra.cost, infraCostMod);
-                        // Final check for safety, though it's already been done
                         if (Object.entries(modifiedCost).every(([res,amt]) => (faction.resources[res]||0) >= amt)) {
                             Object.entries(modifiedCost).forEach(([res,amt]) => { faction.resources[res] -= amt; });
                             newState.world[tile.y][tile.x].infrastructureId = infra.id;
@@ -583,7 +697,8 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
             // Combat
             if (targetTile.units.length > 0 && targetTile.units[0].factionId !== unit.factionId) {
                  const enemyUnit = targetTile.units[0];
-                 const isAtWar = newState.factions[unit.factionId]?.diplomacy[enemyUnit.factionId]?.status === 'War' || enemyUnit.factionId === 'neutral_hostile' || unit.factionId === 'neutral_hostile';
+                 const relationStatus = newState.factions[unit.factionId]?.diplomacy[enemyUnit.factionId]?.status;
+                 const isAtWar = relationStatus === 'War' || enemyUnit.factionId === 'neutral_hostile' || unit.factionId === 'neutral_hostile';
 
                  if (isAtWar) {
                     newState.attackFlashes[unit.id] = newState.gameTime.tick;

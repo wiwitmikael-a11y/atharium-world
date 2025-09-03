@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import type { TileData, GameState } from '../types';
 import { FACTIONS_MAP, RESOURCES_MAP, UNITS_MAP, BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, BIOME_PASTEL_COLORS } from '../constants';
@@ -79,7 +77,7 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
         transform: `translate(${screenX - TILE_WIDTH / 2}px, ${screenY - TILE_CONTAINER_HEIGHT / 2}px)`,
         width: `${TILE_WIDTH}px`,
         height: `${TILE_CONTAINER_HEIGHT}px`,
-        backfaceVisibility: 'hidden',
+        willChange: 'transform',
       }}
       onClick={onSelect}
       role="button"

@@ -1,4 +1,5 @@
 
+
 const GITHUB_ASSET_BASE_URL = 'https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/';
 const GITHUB_MEDIA_BASE_URL = 'https://cdn.jsdelivr.net/gh/wiwitmikael-a11y/atharium-assets@main/';
 
@@ -20,6 +21,9 @@ export const ASSET_PATHS: Record<string, string> = {
   'terrain_tundra': getAssetUrl('terrain_snow_rocky'),
   'terrain_ashlands': getAssetUrl('terrain_volcanic_ash'),
   'terrain_aetherium_wastes': getAssetUrl('terrain_crystal_purple'),
+  'terrain_fluxcorrupted': getAssetUrl('terrain_fluxcorrupted'),
+  'terrain_sableglass': getAssetUrl('terrain_sableglass'),
+  'terrain_skyclave': getAssetUrl('terrain_skyclave'),
   
   // UI & Overlays
   'faction_overlay': getAssetUrl('faction_overlay'),
@@ -45,19 +49,38 @@ export const ASSET_PATHS: Record<string, string> = {
   'resource_clockwork_gear': getAssetUrl('resource_clockwork_gear'),
   'resource_athar_capacitor': getAssetUrl('resource_athar_capacitor'),
 
-  // Infrastructure
+  // Infrastructure - Settlements
   'infra_settlement_hamlet': getAssetUrl('infra_settlement_hamlet'),
   'infra_settlement_town': getAssetUrl('infra_settlement_town'),
+  'infra_settlement_city_industrial': getAssetUrl('infra_settlement_city_industrial'),
+  'infra_settlement_city_nature': getAssetUrl('infra_settlement_city_nature'),
+  'infra_settlement_city_holy': getAssetUrl('infra_settlement_city_holy'),
+  'infra_settlement_city_shadow': getAssetUrl('infra_settlement_city_shadow'),
+  'infra_settlement_city_mountain': getAssetUrl('infra_settlement_city_mountain'),
+  'infra_settlement_city_undead': getAssetUrl('infra_settlement_city_undead'),
+  'infra_settlement_city_nomadic': getAssetUrl('infra_settlement_city_nomadic'),
+  'infra_settlement_city_elf': getAssetUrl('infra_settlement_city_elf'),
+  'infra_settlement_metropolis_industrial': getAssetUrl('infra_settlement_metropolis_industrial'),
+  'infra_settlement_metropolis_nature': getAssetUrl('infra_settlement_metropolis_nature'),
+  'infra_settlement_metropolis_holy': getAssetUrl('infra_settlement_metropolis_holy'),
+  'infra_settlement_metropolis_shadow': getAssetUrl('infra_settlement_metropolis_shadow'),
+  'infra_settlement_metropolis_mountain': getAssetUrl('infra_settlement_metropolis_mountain'),
+  'infra_settlement_metropolis_undead': getAssetUrl('infra_settlement_metropolis_undead'),
+  'infra_settlement_metropolis_nomadic': getAssetUrl('infra_settlement_metropolis_nomadic'),
+  'infra_settlement_metropolis_elf': getAssetUrl('infra_settlement_metropolis_elf'),
+
+  // Infrastructure - Buildings
   'infra_mine': getAssetUrl('infra_mine'),
   'infra_lumber_camp': getAssetUrl('infra_lumber_camp'),
   'infra_crystal_harvester': getAssetUrl('infra_crystal_harvester'),
   'infra_forge': getAssetUrl('infra_forge'),
   'infra_arcane_enchanter': getAssetUrl('infra_arcane_enchanter'),
-
-  // Placeholders for future infrastructure
   'infra_warehouse': getAssetUrl('infra_warehouse'),
   'infra_workshop': getAssetUrl('infra_workshop'),
   'infra_research_archive': getAssetUrl('infra_research_archive'),
+  'infra_sawmill': getAssetUrl('infra_sawmill'),
+  'infra_gear_assembly': getAssetUrl('infra_gear_assembly'),
+  'infra_capacitor_foundry': getAssetUrl('infra_capacitor_foundry'),
 
   // Units: Faction 1 (Cogwork Compact)
   'unit_citizen_automaton': getAssetUrl('unit_citizen_automaton'),

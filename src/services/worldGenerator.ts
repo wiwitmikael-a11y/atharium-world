@@ -1,7 +1,7 @@
 
 
 import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP, STARTING_YEAR } from '../constants';
-import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier } from '../types';
+import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier, Infrastructure } from '../types';
 
 function getRandomInt(min: number, max: number): number {
   min = Math.ceil(min);
@@ -152,8 +152,10 @@ function placeWorldEvents(world: TileData[][]): void {
 function placeFactions(world: TileData[][], factions: Record<string, FactionState>): number {
     const factionIds = Object.keys(factions);
     let unitIdCounter = 0;
-    const MIN_FACTION_DISTANCE = 15;
+    const MIN_FACTION_DISTANCE = 20; // Increased distance for larger settlements
     const placedFactionCoords: {x: number, y: number}[] = [];
+    const settlementDef = INFRASTRUCTURE_MAP.get('settlement_hamlet') as Infrastructure;
+    const settlementSize = settlementDef.multiTile || { width: 1, height: 1 };
 
     for(const factionId of factionIds) {
         const factionInfo = FACTIONS_MAP.get(factionId);
@@ -161,19 +163,31 @@ function placeFactions(world: TileData[][], factions: Record<string, FactionStat
 
         let placed = false;
         let attempts = 0;
-        while(!placed && attempts < 2000) { // Increased attempts for better placement
-            const x = getRandomInt(0, WORLD_SIZE - 1);
-            const y = getRandomInt(0, WORLD_SIZE - 1);
-            const tile = world[y][x];
+        while(!placed && attempts < 2000) {
+            const x = getRandomInt(0, WORLD_SIZE - settlementSize.width);
+            const y = getRandomInt(0, WORLD_SIZE - settlementSize.height);
             
-            // Check 1: Valid Biome and completely empty
-            const isPreferredBiome = factionInfo.preferredBiomes.length === 0 || factionInfo.preferredBiomes.includes(tile.biomeId);
-            const isEmpty = !tile.ownerFactionId && !tile.infrastructureId && !tile.worldEventId && !tile.resourceId;
+            // Check 1: Valid Biome and if the entire 2x2 area is empty
+            const rootTileBiome = world[y][x].biomeId;
+            const isPreferredBiome = factionInfo.preferredBiomes.length === 0 || factionInfo.preferredBiomes.includes(rootTileBiome);
+            
+            let areaIsClear = true;
+            for (let dy = 0; dy < settlementSize.height; dy++) {
+                for (let dx = 0; dx < settlementSize.width; dx++) {
+                    const tile = world[y + dy][x + dx];
+                    if (tile.ownerFactionId || tile.infrastructureId || tile.worldEventId || tile.resourceId) {
+                        areaIsClear = false;
+                        break;
+                    }
+                }
+                if (!areaIsClear) break;
+            }
 
-            if (isPreferredBiome && isEmpty) {
-                 // Check 2: Distance from other factions
+            if (isPreferredBiome && areaIsClear) {
+                // Check 2: Distance from other factions
                 let isFarEnough = true;
                 for (const coord of placedFactionCoords) {
+                    // Check distance from all 4 corners of the new settlement to be safe
                     const distance = Math.hypot(x - coord.x, y - coord.y);
                     if (distance < MIN_FACTION_DISTANCE) {
                         isFarEnough = false;
@@ -182,21 +196,35 @@ function placeFactions(world: TileData[][], factions: Record<string, FactionStat
                 }
 
                 if (isFarEnough) {
-                    // Place 1x1 Hamlet
-                    tile.ownerFactionId = factionId;
-                    tile.infrastructureId = 'settlement_hamlet';
+                    // Place multi-tile settlement
+                    const rootX = x;
+                    const rootY = y;
                     
-                    // Add starting units: 2 Workers, 1 Skirmisher (scout)
+                    for (let dy = 0; dy < settlementSize.height; dy++) {
+                        for (let dx = 0; dx < settlementSize.width; dx++) {
+                            const currentTile = world[y + dy][x + dx];
+                            currentTile.ownerFactionId = factionId;
+                            if (dx === 0 && dy === 0) { // This is the root tile
+                                currentTile.infrastructureId = settlementDef.id;
+                            } else {
+                                currentTile.partOfInfrastructure = { rootX, rootY };
+                            }
+                        }
+                    }
+                    
+                    const rootTile = world[rootY][rootX];
+
+                    // Add starting units to the root tile
                     const workerUnitDef = UNITS.find(u => u.factionId === factionId && u.role === 'Worker' && u.tier === 1);
                     if (workerUnitDef) {
                         for (let i = 0; i < 2; i++) {
-                            tile.units.push({
+                            rootTile.units.push({
                                 id: unitIdCounter++,
                                 unitId: workerUnitDef.id,
                                 factionId: factionId,
                                 hp: getInitialHp(workerUnitDef, factionInfo),
-                                x,
-                                y,
+                                x: rootX,
+                                y: rootY,
                                 killCount: 0,
                                 combatLog: [],
                             });
@@ -205,19 +233,19 @@ function placeFactions(world: TileData[][], factions: Record<string, FactionStat
 
                     const skirmisherUnitDef = UNITS.find(u => u.factionId === factionId && u.role === 'Skirmisher' && u.tier === 1);
                     if (skirmisherUnitDef) {
-                         tile.units.push({
+                         rootTile.units.push({
                             id: unitIdCounter++,
                             unitId: skirmisherUnitDef.id,
                             factionId: factionId,
                             hp: getInitialHp(skirmisherUnitDef, factionInfo),
-                            x,
-                            y,
+                            x: rootX,
+                            y: rootY,
                             killCount: 0,
                             combatLog: [],
                         });
                     }
 
-                    placedFactionCoords.push({x, y});
+                    placedFactionCoords.push({x: rootX, y: rootY});
                     placed = true;
                 }
             }

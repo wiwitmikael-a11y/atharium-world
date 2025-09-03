@@ -417,7 +417,7 @@ const renderContent = () => {
         </div>
         
         <div className={`h-full w-full overflow-hidden transition-opacity duration-200 ${isMinimized ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-            <div className="p-4 h-full w-80 overflow-y-auto">
+            <div className="p-4 h-full w-80 overflow-y-auto text-white">
                 {renderContent()}
             </div>
         </div>

@@ -113,7 +113,7 @@ export const RESOURCES: readonly Resource[] = [
 ];
 
 export const INFRASTRUCTURE: readonly Infrastructure[] = [
-  // Settlements
+  // Settlements Tier 1
   { 
     id: 'settlement_hamlet', name: 'Hamlet', assetId: 'infra_settlement_hamlet',
     description: 'A small settlement, the heart of a burgeoning faction.',
@@ -121,13 +121,42 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = [
     upgradesTo: 'settlement_town', 
     upgradeCost: { 'steamwood_plank': 100, 'iron_ingot': 100 },
     addsStorage: { 'Raw': 200, 'Processed': 100, 'Component': 50, 'Exotic': 10 },
+    multiTile: { width: 2, height: 2 },
   },
+  // Settlements Tier 2
   { 
     id: 'settlement_town', name: 'Town', assetId: 'infra_settlement_town',
     description: 'A growing town capable of supporting a larger population and more advanced units.',
     cost: {}, tier: 2, populationCapacity: 500,
+    upgradeCost: { 'steamwood_plank': 500, 'iron_ingot': 500, 'refined_chronocrystal': 100 },
     addsStorage: { 'Raw': 1000, 'Processed': 500, 'Component': 250, 'Exotic': 50 },
+    multiTile: { width: 2, height: 2 },
   },
+  // Settlements Tier 3 - City
+  ...(['industrial', 'nature', 'holy', 'shadow', 'mountain', 'undead', 'nomadic', 'elf'].map(type => ({
+    id: `settlement_city_${type}`,
+    name: `${type.charAt(0).toUpperCase() + type.slice(1)} City`,
+    assetId: `infra_settlement_city_${type}`,
+    description: 'A regional capital, projecting the faction\'s power and culture.',
+    cost: {},
+    tier: 3,
+    populationCapacity: 2500,
+    addsStorage: { 'Raw': 5000, 'Processed': 2500, 'Component': 1000, 'Exotic': 250 },
+    upgradeCost: { 'steamwood_plank': 2000, 'iron_ingot': 2000, 'refined_chronocrystal': 500, 'athar_capacitor': 100 },
+    multiTile: { width: 2, height: 2 },
+  })) as Infrastructure[]),
+  // Settlements Tier 4 - Metropolis
+  ...(['industrial', 'nature', 'holy', 'shadow', 'mountain', 'undead', 'nomadic', 'elf'].map(type => ({
+    id: `settlement_metropolis_${type}`,
+    name: `${type.charAt(0).toUpperCase() + type.slice(1)} Metropolis`,
+    assetId: `infra_settlement_metropolis_${type}`,
+    description: 'The pinnacle of a civilization, a wonder of the world.',
+    cost: {},
+    tier: 4,
+    populationCapacity: 10000,
+    addsStorage: { 'Raw': 20000, 'Processed': 10000, 'Component': 5000, 'Exotic': 1000 },
+    multiTile: { width: 2, height: 2 },
+  })) as Infrastructure[]),
 
   // Resource Buildings
   { id: 'iron_mine', name: 'Iron Mine', assetId: 'infra_mine', description: 'Extracts Iron Ore from a deposit.', cost: { 'steamwood_plank': 20 }, produces: { resourceId: 'iron_ore', amount: 0.5 }, requiresResourceId: 'iron_ore', tier: 1 },
@@ -139,6 +168,32 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = [
   { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsStorage: { 'Raw': 500 }, },
   { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsStorage: { 'Processed': 250, 'Component': 100 }, },
   
+  // NEW BUILDINGS TO FILL ECONOMIC GAPS
+  { 
+    id: 'infra_sawmill', name: 'Sawmill', assetId: 'infra_sawmill',
+    description: "Processes 2 Steamwood Logs into 1 Steamwood Plank. A noisy, vital part of any settlement's growth.",
+    cost: { 'iron_ingot': 25 },
+    consumes: { resourceId: 'steamwood_log', amount: 2 },
+    produces: { resourceId: 'steamwood_plank', amount: 1 },
+    tier: 1
+  },
+  { 
+    id: 'infra_gear_assembly', name: 'Gear Assembly', assetId: 'infra_gear_assembly',
+    description: "Assembles 2 Iron Ingots and 1 Steamwood Plank into 1 Clockwork Gear. The heart of any industrial war machine.",
+    cost: { 'steamwood_plank': 30, 'iron_ingot': 30 },
+    consumes: { resourceId: 'iron_ingot', amount: 2 }, // Multiple consumes not supported by type, but logic can handle it
+    produces: { resourceId: 'clockwork_gear', amount: 1 },
+    tier: 2
+  },
+  { 
+    id: 'infra_capacitor_foundry', name: 'Capacitor Foundry', assetId: 'infra_capacitor_foundry',
+    description: "Fuses 2 Iron Ingots with 1 Refined Chrono-Crystal to create an Athar Capacitor, a device capable of storing immense energy.",
+    cost: { 'steamwood_plank': 50, 'iron_ingot': 50 },
+    consumes: { resourceId: 'iron_ingot', amount: 2 }, // Multiple consumes not supported by type
+    produces: { resourceId: 'athar_capacitor', amount: 1 },
+    tier: 2
+  },
+
   // Research & Advanced Processing
   { 
     id: 'infra_research_archive', name: 'Research Archive', assetId: 'infra_research_archive', 

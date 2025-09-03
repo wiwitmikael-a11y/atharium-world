@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import type { GameState } from '../types';
 import Tile from './Tile';
-import { UNITS_MAP } from '../constants';
+import { UNITS_MAP, WORLD_SIZE } from '../constants';
 import { ASSET_PATHS } from '../assets';
 
 interface GameMapProps {
@@ -17,32 +17,95 @@ const TILE_CONTAINER_HEIGHT = 128;
 
 const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) => {
   const { world, selectedTile, dyingUnits } = gameState;
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+    
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        setViewportSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height
+        });
+      }
+    });
+
+    resizeObserver.observe(container);
+    // Set initial size
+    setViewportSize({ width: container.clientWidth, height: container.clientHeight });
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  const visibleTiles = useMemo(() => {
+    if (viewportSize.width === 0 || viewportSize.height === 0) {
+      return [];
+    }
+    
+    const { pan, zoom } = camera;
+    const { width, height } = viewportSize;
+
+    const centerX = -pan.x;
+    const centerY = -pan.y;
+
+    const visibleWidth = width / zoom;
+    const visibleHeight = height / zoom;
+
+    const corners = [
+      { x: centerX - visibleWidth / 2, y: centerY - visibleHeight / 2 }, // top-left
+      { x: centerX + visibleWidth / 2, y: centerY - visibleHeight / 2 }, // top-right
+      { x: centerX + visibleWidth / 2, y: centerY + visibleHeight / 2 }, // bottom-right
+      { x: centerX - visibleWidth / 2, y: centerY + visibleHeight / 2 }, // bottom-left
+    ];
+
+    const tileCorners = corners.map(corner => ({
+      x: (corner.y / TILE_VISUAL_HEIGHT) + (corner.x / TILE_WIDTH),
+      y: (corner.y / TILE_VISUAL_HEIGHT) - (corner.x / TILE_WIDTH)
+    }));
+    
+    const buffer = 3;
+    const minX = Math.max(0, Math.floor(Math.min(...tileCorners.map(c => c.x))) - buffer);
+    const maxX = Math.min(WORLD_SIZE - 1, Math.ceil(Math.max(...tileCorners.map(c => c.x))) + buffer);
+    const minY = Math.max(0, Math.floor(Math.min(...tileCorners.map(c => c.y))) - buffer);
+    const maxY = Math.min(WORLD_SIZE - 1, Math.ceil(Math.max(...tileCorners.map(c => c.y))) + buffer);
+
+    const tilesToRender = [];
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const tile = world[y][x];
+        if (tile) {
+            tilesToRender.push(tile);
+        }
+      }
+    }
+    return tilesToRender;
+  }, [camera, viewportSize, world]);
 
   return (
     <div 
+      ref={mapContainerRef}
       className="relative w-full h-full overflow-hidden bg-gray-900" 
     >
         <div 
-          className="absolute top-1/2 left-1/2 transition-transform duration-100 ease-linear"
+          className="absolute top-1/2 left-1/2"
           style={{ 
             transform: `scale(${camera.zoom}) translateX(${camera.pan.x}px) translateY(${camera.pan.y}px)`,
             transformOrigin: 'center center',
+            willChange: 'transform',
           }}
         >
-          {world.flat().map((tile) => {
-            // If the tile is part of a larger structure, find its root tile.
-            // Otherwise, the root tile is the tile itself.
+          {visibleTiles.map((tile) => {
             const rootTile = tile.partOfInfrastructure 
               ? world[tile.partOfInfrastructure.rootY][tile.partOfInfrastructure.rootX] 
               : tile;
 
-            // A tile is considered selected if the game's selectedTile matches its root tile.
-            // This makes the entire 2x2 structure appear selected.
             const isSelected = !!selectedTile && 
                                selectedTile.x === rootTile.x && 
                                selectedTile.y === rootTile.y;
             
-            // Clicking any part of a multi-tile structure should select its root tile.
             const handleSelect = () => onSelectTile(rootTile.x, rootTile.y);
             
             return (
@@ -56,7 +119,6 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
             )
           })}
 
-          {/* Render Dying Units */}
           {dyingUnits.map((dyingUnit) => {
               const unitDef = UNITS_MAP.get(dyingUnit.unitId);
               if (!unitDef) return null;
