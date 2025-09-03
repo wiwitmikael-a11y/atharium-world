@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import Icon from './Icon';
 
 interface HelpModalProps {
   onClose: () => void;
@@ -31,7 +32,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div 
         ref={modalRef}
-        className="bg-gray-900/90 backdrop-blur-md border-2 border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-400/20 text-gray-200 w-full max-w-3xl max-h-[80vh] flex flex-col"
+        className="bg-gray-900/70 backdrop-blur-md border-2 border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-400/20 text-gray-200 w-full max-w-3xl max-h-[80vh] flex flex-col"
       >
         <header className="flex items-center justify-between p-4 border-b border-cyan-500/30">
           <h2 className="text-2xl font-cinzel text-cyan-300">Help & Instructions</h2>
@@ -51,19 +52,22 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
             <h3 className="text-xl font-bold text-cyan-400 mb-3">Gameplay Tips</h3>
             <ul className="space-y-3 list-disc list-inside">
                 <li>
-                    <strong className="font-semibold">Goal:</strong> The primary objective is to become the dominant faction by accumulating the most <strong className="text-yellow-400">Athar</strong>. Athar is generated passively based on your population.
+                    <strong className="font-semibold">$ATHAR Minted - A Global Metric:</strong> The bar at the top of the screen tracks `$ATHAR Minted`, a measure of the world's collective technological and magical advancement. It increases when any faction refines <strong className="text-purple-300">Raw Chrono-Crystals</strong>. Higher levels may trigger world-changing events.
                 </li>
                 <li>
-                    <strong className="font-semibold">Factions & Biomes:</strong> Each faction has unique traits and prefers certain biomes. Units fighting in favorable terrain (or against factions with a terrain disadvantage) gain significant combat bonuses. Check the "Terrain Effects" in the sidebar when selecting a tile.
+                    <strong className="font-semibold">Faction Athar:</strong> Each faction also has its own <strong className="text-yellow-400">Athar</strong> score, generated passively from its population. This represents the faction's influence and power. The faction with the highest Athar is shown in the header.
                 </li>
                 <li>
-                    <strong className="font-semibold">Resources are Key:</strong> Expand your territory to claim resource deposits. Build extractors on them, then construct buildings like Forges and Workshops to process raw materials into advanced components needed for powerful units and infrastructure.
+                    <strong className="font-semibold">Factions & Biomes:</strong> Each faction has unique traits and prefers certain biomes. Units fighting in favorable terrain gain significant combat bonuses. Check the "Terrain Effects" in the sidebar when selecting a tile.
                 </li>
                 <li>
-                    <strong className="font-semibold">Diplomacy Matters:</strong> Factions will form alliances and declare war based on their personality traits and their opinion of you. A powerful military might deter aggressors, while friendly relations can secure a valuable ally.
+                    <strong className="font-semibold">Resources are Key:</strong> Expand your territory to claim resource deposits. Build extractors on them, then construct buildings like Forges to process raw materials into advanced components needed for powerful units and infrastructure.
+                </li>
+                <li>
+                    <strong className="font-semibold">Diplomacy Matters:</strong> Factions will form alliances and declare war based on their personality traits and their opinion of each other. A powerful military might deter aggressors, while friendly relations can secure a valuable ally.
                 </li>
                  <li>
-                    <strong className="font-semibold">Population & Infrastructure:</strong> Your population is your main source of Athar and allows you to train more units. Build and upgrade settlements to increase your population capacity and unlock higher-tier units and buildings.
+                    <strong className="font-semibold">Saving Your Simulation:</strong> You can save the current state of the world via the <strong className="font-semibold">Settings</strong> menu (<Icon name="crystal" className="w-4 h-4 inline-block -mt-1" /> icon). When you log in next time, you'll have the option to load this saved state.
                 </li>
             </ul>
           </section>

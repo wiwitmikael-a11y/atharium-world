@@ -54,7 +54,7 @@ const InfoTooltip: React.FC<InfoTooltipProps> = ({ targetRef, onClose, children 
   return (
     <div
       ref={tooltipRef}
-      className="fixed z-50 bg-gray-900/90 backdrop-blur-md border border-cyan-500/50 rounded-lg shadow-2xl p-4 w-80 text-sm text-gray-300 transition-opacity duration-200"
+      className="fixed z-50 bg-gray-900/70 backdrop-blur-md border border-cyan-500/50 rounded-lg shadow-2xl p-4 w-80 text-sm text-gray-300 transition-opacity duration-200"
       style={{ 
         top: `${position.top}px`, 
         left: `${position.left}px`,

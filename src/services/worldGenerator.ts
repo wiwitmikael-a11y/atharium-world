@@ -310,6 +310,6 @@ export function generateInitialGameState(): GameState {
     dyingUnits: [],
     eventLog: [],
     nextEventId: 0,
-    totalMintedAthar: 0,
+    totalMintedAthar: 10,
   };
 }

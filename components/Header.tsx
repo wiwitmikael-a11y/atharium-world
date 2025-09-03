@@ -91,8 +91,8 @@ const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpe
                     key={speed}
                     onClick={() => onSetSpeed(speed)}
                     onMouseEnter={() => soundManager?.playUIHoverSFX()}
-                    className={`w-12 h-10 flex items-center justify-center rounded-full transition-colors duration-200 ${
-                      isActive ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-700'
+                    className={`w-12 h-10 flex items-center justify-center rounded-full transition-all duration-200 transform ${
+                      isActive ? 'bg-cyan-600 text-white shadow-md scale-110' : 'text-gray-300 hover:bg-gray-700 hover:scale-105'
                     }`}
                     title={isPaused ? 'Pause' : `Speed ${speed}x`}
                     aria-pressed={isActive}
@@ -109,7 +109,7 @@ const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpe
                         setIsSettingsOpen(prev => !prev);
                         soundManager.playSFX('ui_click_subtle');
                     }}
-                    className="p-2 bg-gray-800 border border-gray-700 rounded-full hover:bg-gray-700 transition-colors"
+                    className="p-2 bg-gray-800 border border-gray-700 rounded-full hover:bg-gray-700 transition-transform transform hover:-translate-y-px"
                     aria-label="Settings"
                 >
                     <Icon name="gear" className="w-6 h-6 text-cyan-400" />

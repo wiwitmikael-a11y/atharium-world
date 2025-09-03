@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import type { GameState, TileData, GamePhase } from './types';
+// FIX: Corrected import paths for consistency with project structure
+import type { GameState, TileData, GamePhase, SoundManager } from './types';
 import { generateInitialGameState } from './services/worldGenerator';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useCameraControls } from './hooks/useCameraControls';
@@ -12,9 +13,11 @@ import EventTicker from './components/EventTicker';
 import { BIOMES_MAP, WORLD_SIZE } from './constants';
 import IntroVideo from './components/IntroVideo';
 import StartMenu from './components/StartMenu';
-import { ASSET_PATHS } from './assets';
-import { useAssetLoader } from './hooks/useAssetLoader';
+import LoginScreen from './components/LoginScreen';
 import LoadingScreen from './components/LoadingScreen';
+import { useAssetLoader } from './hooks/useAssetLoader';
+import { ASSET_PATHS } from './assets';
+
 
 const TILE_WIDTH = 128;
 const TILE_VISUAL_HEIGHT = 64;
@@ -25,6 +28,9 @@ const App: React.FC = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(true);
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
+  const [username, setUsername] = useState('');
+  const [saveExists, setSaveExists] = useState(false);
+  
   const targetPanRef = useRef({ x: 0, y: 0 });
   const hasPannedToStartRef = useRef(false);
   
@@ -32,15 +38,28 @@ const App: React.FC = () => {
   
   const [camera, setCamera] = useState({ pan: initialPan, zoom: 0.5 });
   const soundManager = useSoundManager(camera.zoom);
-  const { isLoading: assetsLoading, progress, loadingMessage } = useAssetLoader(Object.values(ASSET_PATHS), gamePhase === 'loading');
   
   const mapContainerRef = useCameraControls(setCamera, camera.zoom, setIsFollowing, gamePhase === 'playing' && soundManager.isAudioInitialized);
 
   useGameLoop(
     setGameState, 
     gamePhase === 'playing' ? gameSpeed : 0, 
-    gamePhase === 'playing' && soundManager.isAudioInitialized ? soundManager : null
+    soundManager.isAudioInitialized ? soundManager : null
   );
+
+  const getSaveKey = useCallback(() => `atharium_save_${username}`, [username]);
+
+    useEffect(() => {
+        if (username) {
+            const savedGame = localStorage.getItem(getSaveKey());
+            setSaveExists(!!savedGame);
+        }
+    }, [username, getSaveKey]);
+
+  const handleLogin = useCallback((name: string) => {
+    setUsername(name);
+    setGamePhase('menu');
+  }, []);
 
   const findUnitLocation = useCallback((unitId: number, world: TileData[][]) => {
     for (const row of world) {
@@ -97,45 +116,67 @@ const App: React.FC = () => {
     });
   }, [findUnitLocation]);
 
+    const handleSaveGame = useCallback(() => {
+        if (gameState && username) {
+            try {
+                const gameStateString = JSON.stringify(gameState);
+                localStorage.setItem(getSaveKey(), gameStateString);
+                setSaveExists(true);
+                console.log('Game Saved!');
+            } catch (error) {
+                console.error("Failed to save game state:", error);
+            }
+        }
+    }, [gameState, username, getSaveKey]);
+
+    const handleNewGame = useCallback(() => {
+        const initialState = generateInitialGameState();
+        setGameState(initialState);
+        soundManager.initializeAudio();
+        setGamePhase('loading');
+        hasPannedToStartRef.current = false;
+    }, [soundManager]);
+
+    const handleLoadGame = useCallback(() => {
+        if (username) {
+            const savedGameString = localStorage.getItem(getSaveKey());
+            if (savedGameString) {
+                try {
+                    const savedGameState = JSON.parse(savedGameString);
+                    setGameState(savedGameState);
+                    soundManager.initializeAudio();
+                    setGamePhase('loading');
+                    hasPannedToStartRef.current = false;
+                } catch (error) {
+                    console.error("Failed to load game state, starting a new game:", error);
+                    handleNewGame();
+                }
+            }
+        }
+    }, [username, getSaveKey, soundManager, handleNewGame]);
+
   const handleResetWorld = useCallback(() => {
-    const newState = generateInitialGameState();
-    setGameState(newState);
+    handleNewGame();
     setGameSpeed(1);
     setIsFollowing(false);
-    hasPannedToStartRef.current = false;
-    // Pan to a new random location on reset
-    const factionIds = Object.keys(newState.factions);
-    if (factionIds.length > 0) {
-        const randomFactionId = factionIds[Math.floor(Math.random() * factionIds.length)];
-        const startTile = newState.world.flat().find(t => t.ownerFactionId === randomFactionId && t.infrastructureId?.startsWith('settlement_'));
-        if (startTile) {
-            handlePanToLocation({ x: startTile.x, y: startTile.y });
-        }
-    }
-  }, [handlePanToLocation]);
+  }, [handleNewGame]);
 
   const handleExitToMenu = useCallback(() => {
       soundManager.shutdown();
       setGameState(null);
-      setGamePhase('intro');
-      // Reset camera to default
+      setGamePhase('menu');
       setCamera({ pan: initialPan, zoom: 0.5 });
   }, [soundManager, initialPan]);
+  
+  const allAssetUrls = useMemo(() => Object.values(ASSET_PATHS), []);
+  const shouldLoadAssets = gamePhase === 'loading';
+  const { isLoading: isGameLoading, progress, loadingMessage } = useAssetLoader(allAssetUrls, shouldLoadAssets);
 
-  const handleStart = useCallback(() => {
-    setGamePhase('loading');
-  }, []);
-
-  // Effect to handle transition from loading to playing
   useEffect(() => {
-    if (gamePhase === 'loading' && !assetsLoading) {
-        const initialState = generateInitialGameState();
-        setGameState(initialState);
-        soundManager.initializeAudio();
-        setGamePhase('playing');
-        hasPannedToStartRef.current = false;
-    }
-  }, [gamePhase, assetsLoading, soundManager]);
+      if (!isGameLoading && gamePhase === 'loading') {
+          setGamePhase('playing');
+      }
+  }, [isGameLoading, gamePhase]);
 
   // Effect for smooth camera follow
   useEffect(() => {
@@ -187,7 +228,7 @@ const App: React.FC = () => {
 
   // Effect for dynamic ambiance sound
   useEffect(() => {
-    if (gamePhase !== 'playing' || !soundManager.isAudioInitialized || !gameState) return;
+    if (gamePhase !== 'playing' || !soundManager.isAudioInitialized) return;
     
     // Calculate center tile from camera pan
     const pan = camera.pan;
@@ -197,7 +238,7 @@ const App: React.FC = () => {
     const tileX = Math.round((centerY + centerX) / 2);
 
     if (tileX >= 0 && tileX < WORLD_SIZE && tileY >= 0 && tileY < WORLD_SIZE) {
-        const biomeId = gameState.world[tileY][tileX]?.biomeId;
+        const biomeId = gameState?.world[tileY][tileX]?.biomeId;
         const biome = BIOMES_MAP.get(biomeId || '');
         if (biome) {
             if (biome.id === 'gloomwell' || biome.id === 'verdant') {
@@ -209,24 +250,29 @@ const App: React.FC = () => {
             }
         }
     }
-  }, [camera.pan, gamePhase, soundManager, gameState]);
+  }, [camera.pan, gamePhase, soundManager, gameState?.world]);
 
 
   const renderGameContent = () => {
     if (gamePhase === 'intro') {
-      return <IntroVideo onFinish={() => setGamePhase('menu')} />;
+      return <IntroVideo onFinish={() => setGamePhase('login')} />;
     }
+    if (gamePhase === 'login') {
+        return <LoginScreen onLogin={handleLogin} />
+    }
+    // FIX: Corrected props for StartMenu component
     if (gamePhase === 'menu') {
-      return <StartMenu onStart={handleStart} />;
+      return <StartMenu username={username} onNewGame={handleNewGame} onLoadGame={handleLoadGame} saveExists={saveExists} />;
     }
-     if (gamePhase === 'loading') {
-      return <LoadingScreen progress={progress} loadingMessage={loadingMessage} />;
+    if (gamePhase === 'loading') {
+        return <LoadingScreen progress={progress} loadingMessage={loadingMessage} />;
     }
     if (gamePhase === 'playing' && gameState && soundManager.isAudioInitialized) {
       return (
-        <div className="flex w-full h-full">
-          <main ref={mapContainerRef} className="flex-1 h-full relative">
+        <div className="relative w-full h-full">
+          <main ref={mapContainerRef} className="w-full h-full relative">
             <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
+            {/* FIX: Corrected props for Header component, passing the full gameState and onSaveGame handler */}
             <Header
               gameState={gameState}
               gameSpeed={gameSpeed}
@@ -234,6 +280,7 @@ const App: React.FC = () => {
               soundManager={soundManager}
               onResetWorld={handleResetWorld}
               onExitToMenu={handleExitToMenu}
+              onSaveGame={handleSaveGame}
             />
             <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
           </main>

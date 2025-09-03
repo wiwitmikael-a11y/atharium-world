@@ -1,3 +1,5 @@
+
+// FIX: Import `ResourceTier` to support the new storage display system.
 import React, { useMemo } from 'react';
 import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS } from '../constants';
@@ -130,6 +132,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
     );
 }
 
+// FIX: Added TIER_NAMES constant for the new storage display.
 const TIER_NAMES: Record<ResourceTier, string> = {
     Raw: 'Raw Materials',
     Processed: 'Processed Goods',
@@ -153,6 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedTile, gameState, onSelectUnit
     
     const characters: { name: string; isLeader: boolean; location: {x: number, y: number} }[] = [];
     
+    // 1. Leader
     const leader = ownerFactionState.leader;
     let leaderLocation: {x: number, y: number} | null = null;
     
@@ -246,6 +250,7 @@ const renderContent = () => {
                             <span className="font-mono">{ownerFactionState.population} / {infrastructure?.populationCapacity || 0}</span>
                         </div>
                     )}
+                    {/* FIX: Replaced resource display to use the new faction.storage system, showing resources by tier. */}
                     {isSettlement && ownerFactionState.storage ? (
                         <div className="space-y-2">
                             {Object.entries(ownerFactionState.storage).map(([tier, data]) => {
@@ -397,14 +402,14 @@ const renderContent = () => {
   }
 
   return (
-    <aside className={`absolute sm:relative h-full right-0 flex flex-col transition-all duration-300 ease-in-out ${isMinimized ? 'w-0 sm:w-4' : 'w-full sm:w-80'} bg-gray-900/80 sm:bg-gray-900/70 backdrop-blur-md border-l-2 border-cyan-400 shadow-2xl shadow-cyan-400/30 z-40`}>
-        <div className="absolute top-1/2 -translate-y-1/2 w-8 h-14 -left-8 sm:-left-4 flex items-center z-20">
+    <aside className={`absolute top-0 right-0 h-full flex flex-col transition-all duration-300 ease-in-out ${isMinimized ? 'w-4' : 'w-80'} bg-gray-900/70 backdrop-blur-md border-l-2 border-cyan-400 shadow-2xl shadow-cyan-400/30 z-40`}>
+        <div className="absolute top-1/2 -translate-y-1/2 w-8 h-14 -left-4 flex items-center z-20">
             <button 
                 onClick={() => {
                     onToggleMinimize();
                     soundManager?.playSFX('ui_click_subtle');
                 }} 
-                className="w-full h-full bg-gray-800/90 hover:bg-cyan-800/90 rounded-l-lg flex items-center justify-center"
+                className="w-full h-full bg-gray-800/90 hover:bg-cyan-800/90 rounded-l-lg flex items-center justify-center transition-colors duration-200"
                 aria-label={isMinimized ? 'Expand sidebar' : 'Collapse sidebar'}
             >
                 <Icon name={isMinimized ? 'chevron-left' : 'chevron-right'} className="w-6 h-6 text-cyan-300" />
@@ -412,7 +417,7 @@ const renderContent = () => {
         </div>
         
         <div className={`h-full w-full overflow-hidden transition-opacity duration-200 ${isMinimized ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-            <div className="p-4 h-full w-full sm:w-80 overflow-y-auto">
+            <div className="p-4 h-full w-80 overflow-y-auto">
                 {renderContent()}
             </div>
         </div>

@@ -22,11 +22,23 @@ export const useAssetLoader = (assetUrls: string[], shouldLoad: boolean) => {
             return;
         }
 
+        const startTime = performance.now();
+        const minLoadingTime = 10000; // 10 seconds minimum loading time
+
         const assets = assetUrls.filter(url => url.endsWith('.png'));
         const totalAssets = assets.length;
+
+        const finishLoading = () => {
+            const elapsedTime = performance.now() - startTime;
+            const remainingTime = minLoadingTime - elapsedTime;
+
+            setTimeout(() => {
+                setIsLoading(false);
+            }, Math.max(500, remainingTime)); // Ensure at least a 500ms delay after 100%
+        };
+
         if (totalAssets === 0) {
-            setIsLoading(false);
-            setProgress(1);
+            finishLoading();
             return;
         }
 
@@ -41,10 +53,7 @@ export const useAssetLoader = (assetUrls: string[], shouldLoad: boolean) => {
             setLoadingMessage(LOADING_MESSAGES[messageIndex]);
 
             if (loadedCount === totalAssets) {
-                // Short delay to allow the 100% to show
-                setTimeout(() => {
-                    setIsLoading(false);
-                }, 500);
+                finishLoading();
             }
         };
 

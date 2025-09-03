@@ -22,7 +22,7 @@ const EventTicker: React.FC<EventTickerProps> = ({ events, onEventClick }) => {
             {events.map((event) => (
                 <li 
                     key={event.id}
-                    className="text-gray-300 text-sm mb-1 p-1 rounded hover:bg-gray-700/80 cursor-pointer transition-colors flex items-center justify-between"
+                    className="text-gray-300 text-sm mb-1 p-1 rounded hover:bg-gray-700/80 cursor-pointer transition-all duration-150 hover:pl-2 flex items-center justify-between"
                     onClick={() => onEventClick(event.location)}
                     title={`Click to jump to location (${event.location.x}, ${event.location.y})`}
                 >

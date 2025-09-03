@@ -13,6 +13,7 @@ interface HeaderProps {
   soundManager: SoundManager;
   onResetWorld: () => void;
   onExitToMenu: () => void;
+  onSaveGame: () => void;
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -25,7 +26,7 @@ const formatMintedAthar = (num: number) => {
     }).format(num);
 }
 
-const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu }) => {
+const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu, onSaveGame }) => {
   const { gameTime, totalMintedAthar } = gameState;
   const epochInfo = EPOCHS.find(e => e.id === gameTime.epoch);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -74,6 +75,43 @@ const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, sound
         <div className="container mx-auto flex justify-between items-center text-white">
           
           <div className="flex items-center space-x-2 sm:space-x-6">
+              <div ref={settingsRef} className="relative">
+                  <button
+                      onClick={() => {
+                          setIsSettingsOpen(prev => !prev);
+                          soundManager.playSFX('ui_click_subtle');
+                      }}
+                      className="p-2 bg-gray-800 border border-gray-700 rounded-full hover:bg-gray-700 transition-colors"
+                      aria-label="Settings"
+                  >
+                      <Icon name="crystal" className="w-6 h-6 text-cyan-400" />
+                  </button>
+                  {isSettingsOpen && (
+                      <SettingsMenu 
+                          soundManager={soundManager}
+                          onSaveGame={onSaveGame}
+                          onReset={() => {
+                              onResetWorld();
+                              setIsSettingsOpen(false);
+                          }}
+                          onExit={() => {
+                              onExitToMenu();
+                              setIsSettingsOpen(false);
+                          }}
+                      />
+                  )}
+              </div>
+              <button
+                  onClick={() => {
+                      setIsHelpOpen(true);
+                      soundManager.playSFX('ui_click_subtle');
+                  }}
+                  className="p-2 bg-gray-800 border border-gray-700 rounded-full hover:bg-gray-700 transition-colors"
+                  aria-label="Help"
+              >
+                  <Icon name="help" className="w-6 h-6 text-cyan-400" />
+              </button>
+
               <div className="flex items-center space-x-2 sm:space-x-6 bg-gray-800 px-2 sm:px-4 py-2 rounded-lg border border-gray-700">
                   <div ref={timeRef} onClick={() => setActiveTooltip(activeTooltip === 'time' ? null : 'time')} className="flex items-center space-x-2 cursor-pointer" title="Game Date">
                       <Icon name="time" className="w-5 h-5 text-cyan-400" />
@@ -115,43 +153,6 @@ const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, sound
                   );
                 })}
               </div>
-
-              <button
-                  onClick={() => {
-                      setIsHelpOpen(true);
-                      soundManager.playSFX('ui_click_subtle');
-                  }}
-                  className="p-2 bg-gray-800 border border-gray-700 rounded-full hover:bg-gray-700 transition-colors"
-                  aria-label="Help"
-              >
-                  <Icon name="help" className="w-6 h-6 text-cyan-400" />
-              </button>
-
-              <div ref={settingsRef} className="relative">
-                  <button
-                      onClick={() => {
-                          setIsSettingsOpen(prev => !prev);
-                          soundManager.playSFX('ui_click_subtle');
-                      }}
-                      className="p-2 bg-gray-800 border border-gray-700 rounded-full hover:bg-gray-700 transition-colors"
-                      aria-label="Settings"
-                  >
-                      <Icon name="gear" className="w-6 h-6 text-cyan-400" />
-                  </button>
-                  {isSettingsOpen && (
-                      <SettingsMenu 
-                          soundManager={soundManager}
-                          onReset={() => {
-                              onResetWorld();
-                              setIsSettingsOpen(false);
-                          }}
-                          onExit={() => {
-                              onExitToMenu();
-                              setIsSettingsOpen(false);
-                          }}
-                      />
-                  )}
-              </div>
           </div>
         </div>
       </header>
@@ -177,6 +178,7 @@ const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, sound
       {activeTooltip === 'athar' && (
         <InfoTooltip targetRef={atharMintedRef} onClose={() => setActiveTooltip(null)}>
           <h4 className="font-bold text-red-400 mb-2">$ATHAR Minted</h4>
+          <p className="mb-2"><strong className="font-semibold">Current Total:</strong> {totalMintedAthar.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           <p>This is a global measure of the world's collective magical and technological progress.</p>
           <p className="mt-2">It increases as factions across the world purify raw <strong className="text-purple-300">Chrono-Crystals</strong> into their refined state using <strong className="text-cyan-300">Arcane Enchanters</strong>.</p>
           <p className="mt-2 text-xs text-gray-400">Higher levels of minted $ATHAR may trigger world-changing events or unlock new possibilities.</p>

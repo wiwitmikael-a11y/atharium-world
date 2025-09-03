@@ -14,7 +14,6 @@ const UnitListItem: React.FC<UnitListItemProps> = ({ unit, isSelected, onClick, 
   const unitDef = UNITS_MAP.get(unit.unitId);
   const faction = FACTIONS_MAP.get(unit.factionId);
 
-  // This hook is now at the top level of a component, which is correct.
   const maxHp = useMemo(() => {
     if (!unitDef || !faction) return 0;
     
@@ -35,16 +34,33 @@ const UnitListItem: React.FC<UnitListItemProps> = ({ unit, isSelected, onClick, 
 
   const isHostile = faction.id === 'neutral_hostile';
   const borderColor = isHostile ? 'border-gray-500' : `border-${faction.color}`;
-  const selectionClasses = isSelected ? 'bg-cyan-500/30 ring-2 ring-cyan-400' : 'hover:bg-black/50';
+  
+  const healthPercentage = maxHp > 0 ? (unit.hp / maxHp) * 100 : 0;
+  const selectionClasses = isSelected
+    ? 'selected-list-item-pulse ring-2 ring-cyan-400/50'
+    : 'hover:bg-gray-800/60';
 
   return (
     <li
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`p-2 rounded bg-black/30 border-l-4 ${borderColor} cursor-pointer ${selectionClasses} transition-all duration-200`}
+      className={`p-2.5 rounded-lg bg-black/40 border-l-4 ${borderColor} cursor-pointer ${selectionClasses} transition-all duration-200 transform hover:-translate-y-px hover:shadow-lg`}
     >
-      <p className="font-semibold">{unitDef.name}</p>
-      <p className="text-sm text-gray-400">HP: {Math.ceil(unit.hp)}/{maxHp} | ATK: {unitDef.atk}</p>
+      <div className="flex justify-between items-center mb-1.5">
+        <p className="font-semibold text-base">{unitDef.name}</p>
+        <p className="text-sm text-gray-400 font-mono">ATK: {unitDef.atk}</p>
+      </div>
+      <div className="w-full bg-black/30 rounded-full h-2 border border-black/20 overflow-hidden">
+        <div
+          className={`h-full rounded-full bg-green-500 transition-all duration-500 ease-out ${
+            isSelected ? 'selected-health-bar' : ''
+          }`}
+          style={{ width: `${healthPercentage}%` }}
+        ></div>
+      </div>
+      <div className="text-xs text-right text-gray-300 mt-1 font-mono">
+        {Math.ceil(unit.hp)} / {maxHp}
+      </div>
     </li>
   );
 };

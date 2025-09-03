@@ -1,5 +1,4 @@
 
-
 // FIX: Import `ResourceTier` to support the new storage display system.
 import React, { useMemo } from 'react';
 import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier } from '../types';
@@ -410,7 +409,7 @@ const renderContent = () => {
                     onToggleMinimize();
                     soundManager?.playSFX('ui_click_subtle');
                 }} 
-                className="w-full h-full bg-gray-800/90 hover:bg-cyan-800/90 rounded-l-lg flex items-center justify-center"
+                className="w-full h-full bg-gray-800/90 hover:bg-cyan-800/90 rounded-l-lg flex items-center justify-center transition-colors duration-200"
                 aria-label={isMinimized ? 'Expand sidebar' : 'Collapse sidebar'}
             >
                 <Icon name={isMinimized ? 'chevron-left' : 'chevron-right'} className="w-6 h-6 text-cyan-300" />
