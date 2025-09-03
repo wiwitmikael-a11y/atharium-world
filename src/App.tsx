@@ -1,6 +1,5 @@
 import React from 'react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-// FIX: Corrected import paths for consistency with project structure
 import type { GameState, TileData, GamePhase } from './types';
 import { generateInitialGameState } from './services/worldGenerator';
 import { useGameLoop } from './hooks/useGameLoop';
@@ -267,7 +266,6 @@ const App: React.FC = () => {
     if (gamePhase === 'login') {
         return <LoginScreen onLogin={handleLogin} />
     }
-    // FIX: Corrected props for StartMenu component
     if (gamePhase === 'menu') {
       return <StartMenu username={username} onNewGame={handleNewGame} onLoadGame={handleLoadGame} saveExists={saveExists} />;
     }
@@ -276,8 +274,8 @@ const App: React.FC = () => {
     }
     if (gamePhase === 'playing' && gameState && soundManager.isAudioInitialized) {
       return (
-        <div className="relative w-full h-full">
-          <main ref={mapContainerRef} className="w-full h-full relative">
+        <div className="w-full h-full flex">
+          <main ref={mapContainerRef} className="flex-1 h-full relative">
             <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
             <Header
               gameState={gameState}
@@ -304,7 +302,6 @@ const App: React.FC = () => {
         </div>
       );
     }
-    // Fallback for initial loading state or if something unexpected happens
     return null;
   };
 

@@ -10,19 +10,26 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress, loadingMessage 
 
   return (
     <div className="w-screen h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
-      <div className="w-full max-w-lg text-center p-4">
-        <h1 className="text-3xl font-cinzel text-cyan-300 mb-4">Entering Atharium...</h1>
-        <div className="w-full bg-gray-700 rounded-full h-4 border border-cyan-500/50 shadow-inner">
+      <div 
+        className="text-center mb-8"
+        // FIX: The value for a CSS property must be a string, not a boolean. Changed to return 'running' or 'paused'.
+        style={{ animationPlayState: progress < 1 ? 'running' : 'paused' }}
+      >
+        <h1 className="text-6xl font-cinzel text-cyan-300 mb-2" style={{ textShadow: '0 0 15px rgba(45, 212, 191, 0.5)' }}>ATHARIUM</h1>
+        <p className="text-xl text-gray-400">An Ever-Evolving World Simulation</p>
+      </div>
+      <div className="w-full max-w-2xl px-4">
+        <div className="w-full bg-gray-700/50 rounded-full h-4 border border-cyan-500/30">
           <div
-            className="bg-cyan-500 h-full rounded-full transition-all duration-300 ease-linear"
+            className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full rounded-full transition-all duration-300 ease-linear"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <p className="mt-4 text-lg text-gray-300">{loadingMessage}</p>
-        <p className="mt-2 text-2xl font-mono font-bold text-cyan-400">{progressPercent}%</p>
+        <p className="text-center mt-4 text-lg font-cinzel animate-pulse text-gray-300">{loadingMessage}</p>
       </div>
     </div>
   );
 };
 
+// FIX: Add default export to make the component importable.
 export default LoadingScreen;

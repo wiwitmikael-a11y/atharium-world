@@ -1,6 +1,4 @@
 
-
-
 export interface Epoch {
   id: string;
   name: string;
@@ -155,7 +153,7 @@ export interface Infrastructure {
   description: string;
   cost: Record<string, number>;
   produces?: { resourceId: string; amount: number; };
-  consumes?: { resourceId: string; amount: number; };
+  consumes?: { resourceId: string; amount: number; }[];
   requiresResourceId?: string;
   tier: number;
   upgradesTo?: string;

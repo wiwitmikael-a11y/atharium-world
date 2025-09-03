@@ -1,7 +1,6 @@
-
-// FIX: Import `ResourceTier` to support the new storage display system.
 import React, { useMemo } from 'react';
-import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier } from '../types';
+// FIX: Import Faction and FactionEffectType to be used in getFactionModifier helper function.
+import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, Faction, FactionEffectType } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
@@ -15,6 +14,24 @@ interface SidebarProps {
   isMinimized: boolean;
   onToggleMinimize: () => void;
 }
+
+// FIX: Add getFactionModifier helper function to calculate faction-based stat modifications.
+// This function was missing, causing errors in UnitDetailView.
+const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType, filter?: any): number => {
+    let modifier = 0;
+    if (!factionInfo.traits) return 0;
+    for (const trait of factionInfo.traits) {
+        for (const effect of trait.effects) {
+            if (effect.type === effectType) {
+                // Apply filters for specificity
+                if (filter?.unitRole && effect.unitRole && filter.unitRole !== effect.unitRole) continue;
+                if (filter?.stat && effect.stat && filter.stat !== effect.stat) continue;
+                modifier += effect.value;
+            }
+        }
+    }
+    return modifier;
+};
 
 const getStatusStyles = (status: DiplomaticStatus): { color: string, icon: string } => {
     switch (status) {
@@ -34,17 +51,10 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
         const factionInfo = FACTIONS_MAP.get(unit.factionId);
         if (!factionInfo) return unitDef.hp;
         
-        let hpMod = 0;
-        factionInfo.traits.forEach(trait => {
-            trait.effects.forEach(effect => {
-                if (effect.type === 'UNIT_STAT_MOD' && effect.stat === 'hp') {
-                    if (!effect.unitRole || effect.unitRole === unitDef.role) {
-                        hpMod += effect.value;
-                    }
-                }
-            });
-        });
-        return Math.floor(unitDef.hp * (1 + hpMod));
+        // FIX: Replaced incorrect HP calculation with a call to getFactionModifier to correctly calculate max HP based on faction traits.
+        const hpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
+        const totalHpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
+        return Math.floor(unitDef.hp * (1 + hpMod + totalHpMod));
     }, [unit.factionId, unitDef]);
 
 
@@ -132,7 +142,6 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
     );
 }
 
-// FIX: Added TIER_NAMES constant for the new storage display.
 const TIER_NAMES: Record<ResourceTier, string> = {
     Raw: 'Raw Materials',
     Processed: 'Processed Goods',
@@ -156,7 +165,6 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedTile, gameState, onSelectUnit
     
     const characters: { name: string; isLeader: boolean; location: {x: number, y: number} }[] = [];
     
-    // 1. Leader
     const leader = ownerFactionState.leader;
     let leaderLocation: {x: number, y: number} | null = null;
     
@@ -250,10 +258,10 @@ const renderContent = () => {
                             <span className="font-mono">{ownerFactionState.population} / {infrastructure?.populationCapacity || 0}</span>
                         </div>
                     )}
-                    {/* FIX: Replaced resource display to use the new faction.storage system, showing resources by tier. */}
                     {isSettlement && ownerFactionState.storage ? (
                         <div className="space-y-2">
                             {Object.entries(ownerFactionState.storage).map(([tier, data]) => {
+                                if (data.capacity === 0) return null;
                                 const percentage = data.capacity > 0 ? (data.current / data.capacity) * 100 : 0;
                                 const isNearCapacity = percentage > 90;
                                 const tierName = TIER_NAMES[tier as ResourceTier];
@@ -280,22 +288,7 @@ const renderContent = () => {
                                 );
                             })}
                         </div>
-                    ) : (
-                         <div>
-                            <h4 className="font-semibold text-gray-300">Resources:</h4>
-                            <ul className="text-sm text-gray-400 grid grid-cols-2 gap-x-4">
-                                {Object.entries(ownerFactionState.resources).sort(([a], [b]) => a.localeCompare(b)).map(([id, amount]) => {
-                                    const resourceInfo = RESOURCES_MAP.get(id);
-                                    return (
-                                        <li key={id} className="flex justify-between">
-                                            <span>{resourceInfo?.name || id}:</span>
-                                            <span className="font-mono">{Math.floor(amount)}</span>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
-                        </div>
-                    )}
+                    ) : ( null )}
                     {notableCharacters.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-gray-600">
                             <h4 className="font-semibold text-gray-300 flex items-center"><Icon name="user" className="w-4 h-4 mr-2" />Notable Characters:</h4>

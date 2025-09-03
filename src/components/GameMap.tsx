@@ -48,12 +48,15 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
     const { pan, zoom } = camera;
     const { width, height } = viewportSize;
 
+    // Calculate the center of the screen in world coordinates
     const centerX = -pan.x;
     const centerY = -pan.y;
 
+    // Calculate the visible width and height in world coordinates
     const visibleWidth = width / zoom;
     const visibleHeight = height / zoom;
 
+    // Define the four corners of the viewport in world coordinates
     const corners = [
       { x: centerX - visibleWidth / 2, y: centerY - visibleHeight / 2 }, // top-left
       { x: centerX + visibleWidth / 2, y: centerY - visibleHeight / 2 }, // top-right
@@ -61,11 +64,13 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
       { x: centerX - visibleWidth / 2, y: centerY + visibleHeight / 2 }, // bottom-left
     ];
 
+    // Convert world coordinates to tile indices
     const tileCorners = corners.map(corner => ({
       x: (corner.y / TILE_VISUAL_HEIGHT) + (corner.x / TILE_WIDTH),
       y: (corner.y / TILE_VISUAL_HEIGHT) - (corner.x / TILE_WIDTH)
     }));
     
+    // Determine the min/max tile indices to render, with a buffer
     const buffer = 3;
     const minX = Math.max(0, Math.floor(Math.min(...tileCorners.map(c => c.x))) - buffer);
     const maxX = Math.min(WORLD_SIZE - 1, Math.ceil(Math.max(...tileCorners.map(c => c.x))) + buffer);

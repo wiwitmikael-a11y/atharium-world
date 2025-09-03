@@ -30,7 +30,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isFirstTime = false }) =
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 pop-in">
       <div 
         ref={modalRef}
         className="bg-gray-900/70 backdrop-blur-md border-2 border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-400/20 text-gray-200 w-full max-w-3xl max-h-[80vh] flex flex-col"

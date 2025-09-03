@@ -24,7 +24,6 @@ export const useAssetLoader = (assetUrls: string[], shouldLoad: boolean) => {
 
         const minLoadingTime = 10000; // 10 seconds
 
-        // Promise for asset loading
         const assetLoadingPromise = new Promise<void>(resolve => {
             const assets = assetUrls.filter(url => url.endsWith('.png'));
             const totalAssets = assets.length;
@@ -42,15 +41,13 @@ export const useAssetLoader = (assetUrls: string[], shouldLoad: boolean) => {
             assets.forEach(url => {
                 const img = new Image();
                 img.onload = handleLoad;
-                img.onerror = handleLoad; // Count errors to not block loading
+                img.onerror = handleLoad;
                 img.src = url;
             });
         });
 
-        // Promise for minimum time
         const minTimePromise = new Promise<void>(resolve => setTimeout(resolve, minLoadingTime));
         
-        // Timer for visual progress and messages
         const startTime = Date.now();
         const visualUpdateInterval = setInterval(() => {
             const elapsedTime = Date.now() - startTime;
@@ -64,13 +61,11 @@ export const useAssetLoader = (assetUrls: string[], shouldLoad: boolean) => {
             if (currentProgress >= 1) {
                 clearInterval(visualUpdateInterval);
             }
-        }, 50); // Update progress every 50ms for smooth animation
+        }, 50);
 
-        // Wait for both asset loading and minimum time to complete
         Promise.all([assetLoadingPromise, minTimePromise]).then(() => {
-            setProgress(1); // Ensure it's 100%
+            setProgress(1);
             setLoadingMessage(LORE_MESSAGES[LORE_MESSAGES.length - 1].text);
-            // Add a small final delay for the 100% to be visible
             setTimeout(() => {
                 setIsLoading(false);
             }, 300);

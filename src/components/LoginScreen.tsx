@@ -28,7 +28,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="absolute top-0 left-0 w-full h-full bg-black/50" />
 
             <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-4">
-                <div className="bg-gray-900/70 backdrop-blur-md p-8 rounded-xl border border-cyan-500/30 shadow-2xl w-full max-w-md">
+                <div className="bg-gray-900/70 backdrop-blur-md p-8 rounded-xl border border-cyan-500/30 shadow-2xl w-full max-w-md pop-in">
                     <h1 className="text-4xl font-cinzel text-cyan-200 mb-2">Welcome to Atharium</h1>
                     <p className="text-gray-400 mb-6">Enter your name to begin your journey.</p>
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -45,26 +45,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                                 placeholder="Enter your name..."
                                 required
                                 minLength={3}
-                            />
-                        </div>
-
-                        <div>
-                             <label htmlFor="wallet_address" className="block text-left text-sm font-medium text-gray-500 mb-1">
-                                Wallet Address (Optional)
-                            </label>
-                            <input
-                                id="wallet_address"
-                                type="text"
-                                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed"
-                                placeholder="Feature under construction"
-                                disabled
+                                autoFocus
                             />
                         </div>
 
                         <button
                             type="submit"
                             className="w-full text-xl font-cinzel px-8 py-3 bg-cyan-600/80 border-2 border-cyan-400 rounded-lg shadow-lg text-white hover:bg-cyan-500 hover:shadow-cyan-400/50 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                            disabled={!username.trim()}
+                            disabled={!username.trim() || username.trim().length < 3}
                         >
                             Enter World
                         </button>

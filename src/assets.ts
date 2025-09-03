@@ -1,5 +1,3 @@
-
-
 const GITHUB_ASSET_BASE_URL = 'https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/';
 const GITHUB_MEDIA_BASE_URL = 'https://cdn.jsdelivr.net/gh/wiwitmikael-a11y/atharium-assets@main/';
 
@@ -20,7 +18,7 @@ export const ASSET_PATHS: Record<string, string> = {
   'terrain_wasteland': getAssetUrl('terrain_earth_cracked'),
   'terrain_tundra': getAssetUrl('terrain_snow_rocky'),
   'terrain_ashlands': getAssetUrl('terrain_volcanic_ash'),
-  'terrain_aetherium_wastes': getAssetUrl('terrain_crystal_purple'),
+  'terrain_atharium_wastes': getAssetUrl('terrain_crystal_purple'),
   'terrain_fluxcorrupted': getAssetUrl('terrain_fluxcorrupted'),
   'terrain_sableglass': getAssetUrl('terrain_sableglass'),
   'terrain_skyclave': getAssetUrl('terrain_skyclave'),
@@ -144,4 +142,16 @@ export const ASSET_PATHS: Record<string, string> = {
   'unit_beast_aetherwing': getAssetUrl('unit_beast_aetherwing'),
   'unit_goblin_raider': getAssetUrl('unit_goblin_raider'),
   'unit_bandit_raider': getAssetUrl('unit_bandit_raider'),
+};
+
+export const BIOME_TERRAIN_MAP: Record<string, string> = {
+  gloomwell: 'terrain_gloomwell',
+  verdant: 'terrain_verdant',
+  wasteland: 'terrain_wasteland',
+  tundra: 'terrain_tundra',
+  ashlands: 'terrain_ashlands',
+  atharium_wastes: 'terrain_atharium_wastes',
+  fluxcorrupted: 'terrain_fluxcorrupted',
+  sableglass: 'terrain_sableglass',
+  skyclave: 'terrain_skyclave',
 };
