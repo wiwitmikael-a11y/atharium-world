@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType, UnitTrait } from '../types';
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType } from '../types';
 import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCE_SPAWN_CHANCES, RESOURCES, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL } from '../constants';
 import { ITEMS } from '../services/dataLoader';
 

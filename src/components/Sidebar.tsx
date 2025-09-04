@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, Faction, FactionEffectType, ItemDefinition, StatEffect, EquipmentSlot } from '../types';
-import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL, RARITY_COLORS } from '../constants';
+import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNITS, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL, RARITY_COLORS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
 
@@ -162,7 +162,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
 
     const xpPercentage = (unit.xp / XP_PER_LEVEL) * 100;
     
-    const equipmentSlots: { slot: EquipmentSlot; icon: string }[] = [
+    const equipmentSlots: { slot: 'Weapon' | 'Armor' | 'Accessory'; icon: string }[] = [
         { slot: 'Weapon', icon: 'sword' },
         { slot: 'Armor', icon: 'shield' },
         { slot: 'Accessory', icon: 'ring' },
@@ -236,7 +236,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                     <div className="pt-3 border-t border-gray-700">
                         <h4 className="text-lg font-bold text-cyan-300 mb-2 flex items-center"><Icon name="briefcase" className="w-5 h-5 mr-2" />Inventory</h4>
                         <ul className="space-y-1 text-sm">
-                            {unit.inventory.map((item, index) => (
+                            {unit.inventory.map((item: ItemDefinition, index) => (
                                 <li 
                                     key={`${item.id}-${index}`} 
                                     ref={el => { itemRefs.current[`inv-${item.id}-${index}`] = el; }}

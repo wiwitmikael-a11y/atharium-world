@@ -1,5 +1,5 @@
-import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Epoch, ItemDefinition, Rarity } from './types';
-import { ITEMS, ITEMS_MAP } from './services/dataLoader';
+import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Epoch, Rarity } from './types';
+import { ITEMS_MAP } from './services/dataLoader';
 
 export const WORLD_SIZE = 50;
 export const TICK_PER_YEAR = 1000;
