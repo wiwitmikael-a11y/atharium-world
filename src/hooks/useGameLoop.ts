@@ -1,12 +1,10 @@
-
 import { useEffect, useRef } from 'react';
-// FIX: Import GameEventType to satisfy the updated GameEvent interface.
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType } from '../types';
-import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, ITEMS, RESOURCE_SPAWN_CHANCES, RESOURCES, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL } from '../constants';
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType, UnitTrait } from '../types';
+import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCE_SPAWN_CHANCES, RESOURCES, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL } from '../constants';
+import { ITEMS } from '../services/dataLoader';
 
 const getFactionOwnedTiles = (world: TileData[][], factionId: string) => world.flat().filter(t => t.ownerFactionId === factionId);
 
-// FIX: Added 'type' parameter to conform to the GameEvent interface.
 const addGameEvent = (newState: GameState, type: GameEventType, message: string, location: { x: number, y: number }) => {
     const newEvent: GameEvent = {
         id: newState.nextEventId,
@@ -72,10 +70,11 @@ const getUnitStats = (unit: UnitInstance): { maxHp: number, attack: number } => 
 };
 
 const getInitialHp = (unitDef: UnitDefinition, factionInfo: Faction): number => {
-    // FIX: Add missing 'equipment' property to conform to UnitInstance type
     return getUnitStats({
         id: -1, unitId: unitDef.id, factionId: factionInfo.id, hp: 0, x: 0, y: 0,
-        level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: ''
+        level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], 
+        equipment: { Weapon: null, Armor: null, Accessory: null }, 
+        currentActivity: ''
     }).maxHp;
 };
 
@@ -144,7 +143,6 @@ const recalculateStorage = (factionState: FactionState, ownedTiles: TileData[]) 
     }
 };
 
-// FIX: Changed ownedTiles parameter from TileData[][] to TileData[] to match what's being passed in.
 const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: TileData[][], tick: number, nextUnitId: number, soundManager: SoundManager): number => {
     if (tick % 101 !== 0) return nextUnitId;
 
@@ -186,7 +184,6 @@ const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: T
                 
                 if (canAfford) {
                     Object.entries(modifiedUnitCost).forEach(([resId, amount]) => { faction.resources[resId] -= amount; });
-                    // FIX: Add missing 'equipment' property to conform to UnitInstance type
                     world[settlement.y][settlement.x].units.push({
                         id: nextUnitId, unitId: unitToTrain.id, factionId: faction.id, hp: getInitialHp(unitToTrain, factionInfo),
                         x: settlement.x, y: settlement.y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Guarding',
@@ -199,7 +196,6 @@ const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: T
     return nextUnitId;
 };
 
-// FIX: Changed ownedTiles parameter from TileData[][] to TileData[] to match what's being passed in.
 const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileData[][], tick: number, nextUnitId: number): number => {
     if (tick % 201 !== 0) return nextUnitId;
 
@@ -213,7 +209,6 @@ const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileD
             faction.leaderStatus = 'adventuring';
             const adventureDuration = 500;
             
-            // FIX: Add missing 'equipment' property to conform to UnitInstance type
             const leaderUnit: UnitInstance = { id: nextUnitId++, unitId: heroDef.id, factionId: faction.id, hp: getInitialHp(heroDef, factionInfo), x: settlement.x, y: settlement.y, adventureTicks: adventureDuration, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Adventuring' };
             world[settlement.y][settlement.x].units.push(leaderUnit);
         }
@@ -240,7 +235,6 @@ const runDiplomacyAI = (newState: GameState, faction: FactionState, factionId: s
            relation.opinion = -100;
            allFactions[otherFactionId].diplomacy[factionId].opinion = -100;
            const factionTile = newState.world.flat().find(t => t.ownerFactionId === factionId);
-           // FIX: Pass GameEventType to addGameEvent.
            if (factionTile) addGameEvent(newState, GameEventType.WAR_DECLARED, `${factionInfo.name} declared war on ${otherFactionInfo.name}!`, {x: factionTile.x, y: factionTile.y});
         }
     }
@@ -425,10 +419,12 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                 if (owner && UNITS_MAP.get(unit.unitId)?.role === 'Hero') {
                     owner.leaderStatus = 'settled';
                     if (Math.random() < 0.33) {
-                        const foundItem = ITEMS[Math.floor(Math.random() * ITEMS.length)];
-                        unit.inventory.push(foundItem);
-                        // FIX: Pass GameEventType to addGameEvent.
-                        addGameEvent(newState, GameEventType.LOOT, `${owner.leader.name} found a ${foundItem.name}!`, { x: unit.x, y: unit.y });
+                        const loreItems = ITEMS.filter(item => item.slot === 'None');
+                        if (loreItems.length > 0) {
+                            const foundItem = loreItems[Math.floor(Math.random() * loreItems.length)];
+                            unit.inventory.push(foundItem);
+                            addGameEvent(newState, GameEventType.LOOT, `${owner.leader.name} found a ${foundItem.name}!`, { x: unit.x, y: unit.y });
+                        }
                     }
                 }
                 newState.world[unit.y][unit.x].units = newState.world[unit.y][unit.x].units.filter(u => u.id !== unit.id);
@@ -439,9 +435,44 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
         let moveX = 0, moveY = 0, targetFound = false;
         const factionInfo = FACTIONS_MAP.get(unit.factionId)!;
-        const isAggressive = factionInfo.personality.aggression > 6 && !unit.adventureTicks;
+        const unitDef = UNITS_MAP.get(unit.unitId)!;
 
-        if (isAggressive) {
+        if (unitDef.role === 'Worker' && unit.currentActivity === 'Guarding') {
+            let nearestExtractor: {x:number, y:number} | null = null;
+            let minDistance = 4; // search radius
+            for (let dy = -minDistance; dy <= minDistance; dy++) {
+                for (let dx = -minDistance; dx <= minDistance; dx++) {
+                    const nx = unit.x + dx;
+                    const ny = unit.y + dy;
+                    if (nx >= 0 && nx < worldWidth && ny >= 0 && ny < worldHeight) {
+                        const tile = newState.world[ny][nx];
+                        if (tile.ownerFactionId === unit.factionId && tile.infrastructureId) {
+                            const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId);
+                            if (infra?.produces && RESOURCES_MAP.get(infra.produces.resourceId)?.tier === 'Raw') {
+                                const dist = Math.hypot(dx, dy);
+                                if (dist < minDistance) {
+                                    minDistance = dist;
+                                    nearestExtractor = {x: nx, y: ny};
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (nearestExtractor) {
+                targetFound = true;
+                if (minDistance <= 1.5) { // Is adjacent
+                    unit.currentActivity = 'Harvesting';
+                } else {
+                    unit.currentActivity = 'Harvesting'; // Simplified for now
+                    moveX = Math.sign(nearestExtractor.x - unit.x);
+                    moveY = Math.sign(nearestExtractor.y - unit.y);
+                }
+            }
+        }
+
+        const isAggressive = factionInfo.personality.aggression > 6 && !unit.adventureTicks;
+        if (!targetFound && isAggressive) {
             let nearestEnemy: UnitInstance | null = null, minDistance = 15;
             const enemyFactions = [...Object.keys(newState.factions), 'neutral_hostile'].filter(id => {
                 if (id === unit.factionId) return false;
@@ -481,7 +512,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                     newState.attackFlashes[unit.id] = newState.gameTime.tick;
                     soundManager.playSFX('sfx_attack_sword');
                     
-                    const unitDef = UNITS_MAP.get(unit.unitId)!;
                     const enemyUnitDef = UNITS_MAP.get(enemyUnit.unitId)!;
                     const attackerStats = getUnitStats(unit);
                     const defenderStats = getUnitStats(enemyUnit);
@@ -579,7 +609,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                 if(!tile.ownerFactionId && tile.units.length === 0) {
                     const unitDef = hostileDefs[Math.floor(Math.random() * hostileDefs.length)];
                     const factionInfo = FACTIONS_MAP.get('neutral_hostile')!;
-                    // FIX: Add missing 'equipment' property to conform to UnitInstance type
                     tile.units.push({id: newState.nextUnitId++, unitId: unitDef.id, factionId: 'neutral_hostile', hp: getInitialHp(unitDef, factionInfo), x, y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Guarding'});
                     placed = true;
                 }

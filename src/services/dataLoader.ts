@@ -1,0 +1,100 @@
+import type { ItemDefinition, ItemEffect, Rarity, EquipmentSlot, StatEffect } from '../types';
+
+const rawCsvData = `id,name,slot,rarity,description,effects
+rusty_shortsword,Rusty Shortsword,Weapon,Common,"A pitted and dull shortsword. Better than nothing.",ATTACK_FLAT:2
+chipped_axe,Chipped Axe,Weapon,Common,"An axe that has seen better days. The blade is notched.",ATTACK_FLAT:3
+splintered_shortbow,Splintered Shortbow,Weapon,Common,"A simple wooden bow, bound with leather straps to keep it from breaking.",ATTACK_FLAT:2
+gnarled_staff,Gnarled Staff,Weapon,Common,"A twisted piece of wood that can be used for hitting things, or perhaps focusing minor magics.",ATTACK_FLAT:1;HP_FLAT:5
+steel_longsword,Steel Longsword,Weapon,Uncommon,"A well-balanced and reliable steel sword.",ATTACK_FLAT:5
+iron_warhammer,Iron Warhammer,Weapon,Uncommon,"A heavy hammer capable of denting armor.",ATTACK_FLAT:6;BONUS_DMG_VS_SIEGE:0.1
+elven_yew_bow,Elven Yew Bow,Weapon,Uncommon,"A finely crafted bow of yew, light and accurate.",ATTACK_FLAT:4;FIRST_STRIKE_CHANCE:0.1
+apprentice_wand,Apprentice's Wand,Weapon,Uncommon,"A simple wand carved with runes of power, it hums with a faint energy.",ATTACK_PERCENT:0.10
+orcish_cleaver,Orcish Cleaver,Weapon,Uncommon,"A brutally effective weapon, designed to hack and chop.",ATTACK_FLAT:7
+dwarven_runic_axe,Dwarven Runic Axe,Weapon,Rare,"A masterfully forged axe with runes of power that glow faintly in battle.",ATTACK_FLAT:10;DEFENSE_FLAT:5
+cogwork_repeater_crossbow,Cogwork Repeater Crossbow,Weapon,Rare,"A complex steampunk crossbow capable of firing bolts in rapid succession.",ATTACK_FLAT:8;FIRST_STRIKE_CHANCE:0.25
+sunfire_battlemace,Sunfire Battlemace,Weapon,Rare,"A mace that seems to glow with an inner light, searing foes on impact.",ATTACK_FLAT:9;BONUS_DMG_VS_INFANTRY:0.15
+shadow_stiletto,Shadow Stiletto,Weapon,Rare,"A thin, dark blade that seems to drink the light around it.",ATTACK_PERCENT:0.15;FIRST_STRIKE_CHANCE:0.3
+archmages_staff_of_power,Archmage's Staff of Power,Weapon,Epic,"A staff brimming with raw magical energy, topped with a flawless, floating Chrono-Crystal.",ATTACK_PERCENT:0.25;HP_FLAT:25
+blade_of_the_verdant_warden,Blade of the Verdant Warden,Weapon,Epic,"A living sword of woven wood and thorns. It slowly heals its wielder.",ATTACK_FLAT:15;HP_REGEN:1.0
+gromril_war-axe,Gromril War-Axe,Weapon,Epic,"An axe forged from near-indestructible Gromril, with a perfectly balanced, devastating head.",ATTACK_FLAT:20;BONUS_DMG_VS_SIEGE:0.25
+forgelords_hammer,"Forge-Lord's Hammer, ""World-Forger""",Weapon,Legendary,"The personal hammer of Hephaestus, said to have shaped the first automatons. It strikes with the force of a falling star.",ATTACK_FLAT:30;ATTACK_PERCENT:0.20;BONUS_DMG_VS_SIEGE:0.5
+grommashs_gorehowl,"Grommash's ""Gorehowl""",Weapon,Legendary,"A legendary axe that howls for blood in the heat of battle. Its thirst is never slaked.",ATTACK_FLAT:40;BONUS_DMG_VS_INFANTRY:0.3
+leather_jerkin,Leather Jerkin,Armor,Common,"Padded leather armor. Offers minimal protection.",HP_FLAT:10;DEFENSE_FLAT:3
+tattered_robes,Tattered Robes,Armor,Common,"Simple cloth robes, offering little more than modesty.",HP_FLAT:5;DEFENSE_FLAT:1
+chainmail_hauberk,Chainmail Hauberk,Armor,Uncommon,"A shirt of interlocking iron rings. Good against slashing attacks.",HP_FLAT:20;DEFENSE_FLAT:8
+hardened_leather_armor,Hardened Leather Armor,Armor,Uncommon,"Leather that has been boiled and treated to provide decent protection.",HP_FLAT:15;DEFENSE_FLAT:6
+acolyte_robes,Acolyte Robes,Armor,Uncommon,"Robes enchanted with minor protective wards.",HP_FLAT:10;DEFENSE_PERCENT:0.05
+steel_plate_armor,Steel Plate Armor,Armor,Rare,"Full plate armor made of fine steel. Offers excellent protection at the cost of mobility.",HP_FLAT:40;DEFENSE_FLAT:15
+elven_leaf-weave_armor,Elven Leaf-Weave Armor,Armor,Rare,"Magically woven leaves that are as strong as leather but light as silk.",HP_FLAT:25;DEFENSE_PERCENT:0.10
+cogwork_carapace,Cogwork Carapace,Armor,Rare,"Reinforced brass plating with internal clockwork mechanisms that aid movement.",HP_PERCENT:0.10;DEFENSE_FLAT:12
+dwarven_gromril_platemail,Dwarven Gromril Platemail,Armor,Epic,"The pinnacle of dwarven smithing. Nearly impervious to conventional weapons.",HP_FLAT:75;DEFENSE_PERCENT:0.20
+robes_of_the_shadow_weave,Robes of the Shadow Weave,Armor,Epic,"Robes spun from pure shadow. The wearer is difficult to see and strike.",HP_FLAT:40;DEFENSE_PERCENT:0.15;FIRST_STRIKE_CHANCE:0.1
+bulwark_of_the_mountain_king,Bulwark of the Mountain King,Armor,Legendary,"The personal armor of Thorgrim Stonehand. It is said to be unbreakable.",HP_PERCENT:0.25;DEFENSE_PERCENT:0.30
+lucky_charm,Lucky Charm,Accessory,Common,"A small, crudely carved wooden charm.",HP_FLAT:5
+iron_ring,Iron Ring,Accessory,Common,"A simple ring of cold iron.",DEFENSE_FLAT:1
+ring_of_vigor,Ring of Vigor,Accessory,Uncommon,"A simple ring that seems to warm the wearer.",HP_FLAT:15
+amulet_of_the_marksman,Amulet of the Marksman,Accessory,Uncommon,"Helps the wearer aim true.",ATTACK_FLAT:2
+troll-hide_bracers,Troll-hide Bracers,Accessory,Uncommon,"These tough bracers slowly mend themselves... and their wearer.",HP_REGEN:0.2
+clockwork_targeting_system,Clockwork Targeting System,Accessory,Rare,"A complex series of lenses and gears that helps identify weak points in enemies.",ATTACK_PERCENT:0.10;BONUS_DMG_VS_SKIRMISHER:0.2
+heartstone_pendant,Heartstone Pendant,Accessory,Rare,"A fragment of a Heartstone that beats with a slow, steady rhythm, bolstering the life force of the wearer.",HP_PERCENT:0.15
+ring_of_regeneration,Ring of Regeneration,Accessory,Rare,"A magical ring that constantly works to close the wearer's wounds.",HP_REGEN:0.5
+eye_of_the_watcher_shard,Eye of the Watcher Shard,Accessory,Epic,"A shard from the great monolith. It grants its wearer a fraction of its precognitive abilities.",DEFENSE_PERCENT:0.10;FIRST_STRIKE_CHANCE:0.33
+dragonscale_shield,Dragonscale Shield,Accessory,Epic,"A shield crafted from a single, massive dragon scale. It is incredibly light and nearly indestructible.",HP_FLAT:50;DEFENSE_PERCENT:0.15
+crown_of_the_lich_lord,Crown of the Lich Lord,Accessory,Legendary,"Malakor's crown, which holds a fragment of his vast intellect and power.",ATTACK_PERCENT:0.20;HP_PERCENT:0.20
+item_ancient_cog,Ancient Cog,None,Uncommon,"A perfectly preserved gear from a forgotten automaton. It hums with latent energy."
+item_dragon_heartscale,Dragon Heartscale,None,Epic,"A scale taken from near a dragon's heart. It is incredibly durable and warm to the touch."
+item_flux_in_a_bottle,Flux-in-a-Bottle,None,Rare,"A swirling vortex of raw magic contained in a reinforced vial. Highly unstable."
+item_map_to_nowhere,Map to Nowhere,None,Common,"An ancient, incomplete map that seems to change every time you look away."
+`;
+
+const parseEffects = (effectsStr: string): ItemEffect[] => {
+    if (!effectsStr) return [];
+    return effectsStr.split(';').map(part => {
+        const [type, value] = part.split(':');
+        if (!type || value === undefined) return null;
+        return {
+            type: type.trim() as StatEffect,
+            value: Number(value),
+        };
+    }).filter((effect): effect is ItemEffect => effect !== null && !isNaN(effect.value));
+};
+
+const parseCsv = (csv: string): ItemDefinition[] => {
+    const lines = csv.trim().split('\n');
+    const headers = lines[0].split(',');
+    const items: ItemDefinition[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        // This regex handles comma-separated values, including those in quotes.
+        // It captures either a quoted string or a sequence of non-comma characters.
+        const values = lines[i].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
+        
+        if (!values || values.length > headers.length) {
+            console.warn(`Skipping malformed CSV line ${i + 1}: ${lines[i]}`);
+            continue;
+        }
+
+        const itemData: any = {};
+        for (let j = 0; j < headers.length; j++) {
+            let value = values[j] || '';
+            if (value.startsWith('"') && value.endsWith('"')) {
+                // Remove quotes and handle escaped quotes ("") inside
+                value = value.slice(1, -1).replace(/""/g, '"');
+            }
+            itemData[headers[j]] = value;
+        }
+
+        items.push({
+            id: itemData.id,
+            name: itemData.name,
+            slot: itemData.slot as EquipmentSlot,
+            rarity: itemData.rarity as Rarity,
+            description: itemData.description,
+            effects: parseEffects(itemData.effects),
+        });
+    }
+    return items;
+};
+
+export const ITEMS: readonly ItemDefinition[] = parseCsv(rawCsvData);
+export const ITEMS_MAP = new Map(ITEMS.map(i => [i.id, i]));

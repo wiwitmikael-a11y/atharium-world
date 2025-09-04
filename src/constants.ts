@@ -1,5 +1,5 @@
-
 import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Epoch, ItemDefinition, Rarity } from './types';
+import { ITEMS, ITEMS_MAP } from './services/dataLoader';
 
 export const WORLD_SIZE = 50;
 export const TICK_PER_YEAR = 1000;
@@ -139,14 +139,14 @@ export const INFRASTRUCTURE: readonly Infrastructure[] = [
   { id: 'iron_mine', name: 'Iron Mine', assetId: 'infra_mine', description: 'Extracts Iron Ore from a deposit.', cost: { 'steamwood_plank': 20 }, produces: { resourceId: 'iron_ore', amount: 0.5 }, requiresResourceId: 'iron_ore', tier: 1, xpGain: 15 },
   { id: 'lumber_camp', name: 'Lumber Camp', assetId: 'infra_lumber_camp', description: 'Harvests logs from Steamwood trees.', cost: { 'iron_ingot': 10 }, produces: { resourceId: 'steamwood_log', amount: 0.5 }, requiresResourceId: 'steamwood_log', tier: 1, xpGain: 15 },
   { id: 'crystal_harvester', name: 'Crystal Harvester', assetId: 'infra_crystal_harvester', description: 'Extracts raw Chrono-Crystals.', cost: { 'steamwood_plank': 15, 'iron_ingot': 15 }, produces: { resourceId: 'chronocrystal_raw', amount: 0.2 }, requiresResourceId: 'chronocrystal_raw', tier: 1, xpGain: 20 },
-  { id: 'infra_forge', name: 'Forge', assetId: 'infra_forge', description: 'Refines 2 Iron Ore into 1 Iron Ingot.', cost: { 'steamwood_plank': 30 }, consumes: [{ resourceId: 'iron_ore', amount: 2 }], produces: { resourceId: 'iron_ingot', amount: 1 }, tier: 1, xpGain: 25 },
+  { id: 'infra_forge', name: 'Forge', assetId: 'infra_forge', description: 'Refines 2 Iron Ore into 1 Iron Ingot.', cost: { 'steamwood_plank': 30 }, consumes: [{ resourceId: 'iron_ore', amount: 2 }], produces: { resourceId: 'iron_ingot', amount: 1 }, tier: 1, xpGain: 25, addsStorage: { 'Raw': 50, 'Processed': 50 } },
   { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsStorage: { 'Raw': 500 }, xpGain: 10 },
   { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsStorage: { 'Processed': 250, 'Component': 100 }, xpGain: 20 },
-  { id: 'infra_sawmill', name: 'Sawmill', assetId: 'infra_sawmill', description: "Processes 2 Steamwood Logs into 1 Steamwood Plank. A noisy, vital part of any settlement's growth.", cost: { 'iron_ingot': 25 }, consumes: [{ resourceId: 'steamwood_log', amount: 2 }], produces: { resourceId: 'steamwood_plank', amount: 1 }, tier: 1, xpGain: 25 },
-  { id: 'infra_gear_assembly', name: 'Gear Assembly', assetId: 'infra_gear_assembly', description: "Assembles 2 Iron Ingots and 1 Steamwood Plank into 1 Clockwork Gear. The heart of any industrial war machine.", cost: { 'steamwood_plank': 30, 'iron_ingot': 30 }, consumes: [{ resourceId: 'iron_ingot', amount: 2 }, { resourceId: 'steamwood_plank', amount: 1 }], produces: { resourceId: 'clockwork_gear', amount: 1 }, tier: 2, xpGain: 35 },
-  { id: 'infra_capacitor_foundry', name: 'Capacitor Foundry', assetId: 'infra_capacitor_foundry', description: "Fuses 2 Iron Ingots with 1 Refined Chrono-Crystal to create an Athar Capacitor, a device capable of storing immense energy.", cost: { 'steamwood_plank': 50, 'iron_ingot': 50 }, consumes: [{ resourceId: 'iron_ingot', amount: 2 }, { resourceId: 'refined_chronocrystal', amount: 1 }], produces: { resourceId: 'athar_capacitor', amount: 1 }, tier: 2, xpGain: 40 },
+  { id: 'infra_sawmill', name: 'Sawmill', assetId: 'infra_sawmill', description: "Processes 2 Steamwood Logs into 1 Steamwood Plank. A noisy, vital part of any settlement's growth.", cost: { 'iron_ingot': 25 }, consumes: [{ resourceId: 'steamwood_log', amount: 2 }], produces: { resourceId: 'steamwood_plank', amount: 1 }, tier: 1, xpGain: 25, addsStorage: { 'Raw': 50, 'Processed': 50 } },
+  { id: 'infra_gear_assembly', name: 'Gear Assembly', assetId: 'infra_gear_assembly', description: "Assembles 2 Iron Ingots and 1 Steamwood Plank into 1 Clockwork Gear. The heart of any industrial war machine.", cost: { 'steamwood_plank': 30, 'iron_ingot': 30 }, consumes: [{ resourceId: 'iron_ingot', amount: 2 }, { resourceId: 'steamwood_plank', amount: 1 }], produces: { resourceId: 'clockwork_gear', amount: 1 }, tier: 2, xpGain: 35, addsStorage: { 'Processed': 50, 'Component': 50 } },
+  { id: 'infra_capacitor_foundry', name: 'Capacitor Foundry', assetId: 'infra_capacitor_foundry', description: "Fuses 2 Iron Ingots with 1 Refined Chrono-Crystal to create an Athar Capacitor, a device capable of storing immense energy.", cost: { 'steamwood_plank': 50, 'iron_ingot': 50 }, consumes: [{ resourceId: 'iron_ingot', amount: 2 }, { resourceId: 'refined_chronocrystal', amount: 1 }], produces: { resourceId: 'athar_capacitor', amount: 1 }, tier: 2, xpGain: 40, addsStorage: { 'Processed': 50, 'Component': 50 } },
   { id: 'infra_research_archive', name: 'Research Archive', assetId: 'infra_research_archive', description: 'Generates 0.5 research points per tick.', cost: { 'refined_chronocrystal': 20, 'steamwood_plank': 50 }, tier: 2, generatesResearchPoints: 0.5, xpGain: 50 },
-  { id: 'infra_arcane_enchanter', name: 'Arcane Enchanter', assetId: 'infra_arcane_enchanter', description: 'Purifies 2 raw Chrono-Crystals into 1 Refined Chrono-Crystal, contributing to the world\'s overall magical and technological advancement ($ATHAR Minted).', cost: { 'steamwood_plank': 40, 'iron_ingot': 40 }, consumes: [{ resourceId: 'chronocrystal_raw', amount: 2 }], produces: { resourceId: 'refined_chronocrystal', amount: 1 }, tier: 2, xpGain: 30 },
+  { id: 'infra_arcane_enchanter', name: 'Arcane Enchanter', assetId: 'infra_arcane_enchanter', description: 'Purifies 2 raw Chrono-Crystals into 1 Refined Chrono-Crystal, contributing to the world\'s overall magical and technological advancement ($ATHAR Minted).', cost: { 'steamwood_plank': 40, 'iron_ingot': 40 }, consumes: [{ resourceId: 'chronocrystal_raw', amount: 2 }], produces: { resourceId: 'refined_chronocrystal', amount: 1 }, tier: 2, xpGain: 30, addsStorage: { 'Raw': 50, 'Processed': 50 } },
 ];
 
 export const UNIT_TRAITS: readonly UnitTrait[] = [
@@ -155,76 +155,6 @@ export const UNIT_TRAITS: readonly UnitTrait[] = [
     { id: 'feral_strength', name: 'Feral Strength', description: '10% chance to deal a critical hit for 200% damage.', effects: [{ type: 'CRITICAL_CHANCE', chance: 0.1, multiplier: 2.0 }] },
     { id: 'undying', name: 'Undying', description: 'Slowly regenerates health over time.', effects: [{ type: 'HP_REGEN', value: 0.1 }] },
     { id: 'long_range', name: 'Long Range', description: '50% chance to attack before the enemy retaliates.', effects: [{ type: 'FIRST_STRIKE', chance: 0.5 }] },
-];
-
-// This is where the magic happens. A huge list of items.
-export const ITEMS: readonly ItemDefinition[] = [
-    // WEAPONS
-    // Common
-    { id: 'rusty_shortsword', name: 'Rusty Shortsword', rarity: 'Common', slot: 'Weapon', description: 'A pitted and dull shortsword. Better than nothing.', effects: [{ type: 'ATTACK_FLAT', value: 2 }] },
-    { id: 'chipped_axe', name: 'Chipped Axe', rarity: 'Common', slot: 'Weapon', description: 'An axe that has seen better days. The blade is notched.', effects: [{ type: 'ATTACK_FLAT', value: 3 }] },
-    { id: 'splintered_shortbow', name: 'Splintered Shortbow', rarity: 'Common', slot: 'Weapon', description: 'A simple wooden bow, bound with leather straps to keep it from breaking.', effects: [{ type: 'ATTACK_FLAT', value: 2 }] },
-    { id: 'gnarled_staff', name: 'Gnarled Staff', rarity: 'Common', slot: 'Weapon', description: 'A twisted piece of wood that can be used for hitting things, or perhaps focusing minor magics.', effects: [{ type: 'ATTACK_FLAT', value: 1 }, {type: 'HP_FLAT', value: 5}] },
-    // Uncommon
-    { id: 'steel_longsword', name: 'Steel Longsword', rarity: 'Uncommon', slot: 'Weapon', description: 'A well-balanced and reliable steel sword.', effects: [{ type: 'ATTACK_FLAT', value: 5 }] },
-    { id: 'iron_warhammer', name: 'Iron Warhammer', rarity: 'Uncommon', slot: 'Weapon', description: 'A heavy hammer capable of denting armor.', effects: [{ type: 'ATTACK_FLAT', value: 6 }, { type: 'BONUS_DMG_VS_SIEGE', value: 0.1 }] },
-    { id: 'elven_yew_bow', name: 'Elven Yew Bow', rarity: 'Uncommon', slot: 'Weapon', description: 'A finely crafted bow of yew, light and accurate.', effects: [{ type: 'ATTACK_FLAT', value: 4 }, { type: 'FIRST_STRIKE_CHANCE', value: 0.1 }] },
-    { id: 'apprentice_wand', name: 'Apprentice\'s Wand', rarity: 'Uncommon', slot: 'Weapon', description: 'A simple wand carved with runes of power, it hums with a faint energy.', effects: [{ type: 'ATTACK_PERCENT', value: 0.10 }] },
-    { id: 'orcish_cleaver', name: 'Orcish Cleaver', rarity: 'Uncommon', slot: 'Weapon', description: 'A brutally effective weapon, designed to hack and chop.', effects: [{ type: 'ATTACK_FLAT', value: 7 }] },
-    // Rare
-    { id: 'dwarven_runic_axe', name: 'Dwarven Runic Axe', rarity: 'Rare', slot: 'Weapon', description: 'A masterfully forged axe with runes of power that glow faintly in battle.', effects: [{ type: 'ATTACK_FLAT', value: 10 }, { type: 'DEFENSE_FLAT', value: 5 }] },
-    { id: 'cogwork_repeater_crossbow', name: 'Cogwork Repeater Crossbow', rarity: 'Rare', slot: 'Weapon', description: 'A complex steampunk crossbow capable of firing bolts in rapid succession.', effects: [{ type: 'ATTACK_FLAT', value: 8 }, { type: 'FIRST_STRIKE_CHANCE', value: 0.25 }] },
-    { id: 'sunfire_battlemace', name: 'Sunfire Battlemace', rarity: 'Rare', slot: 'Weapon', description: 'A mace that seems to glow with an inner light, searing foes on impact.', effects: [{ type: 'ATTACK_FLAT', value: 9 }, { type: 'BONUS_DMG_VS_INFANTRY', value: 0.15 }] },
-    { id: 'shadow_stiletto', name: 'Shadow Stiletto', rarity: 'Rare', slot: 'Weapon', description: 'A thin, dark blade that seems to drink the light around it.', effects: [{ type: 'ATTACK_PERCENT', value: 0.15 }, {type: 'FIRST_STRIKE_CHANCE', value: 0.3 }] },
-    // Epic
-    { id: 'archmages_staff_of_power', name: 'Archmage\'s Staff of Power', rarity: 'Epic', slot: 'Weapon', description: 'A staff brimming with raw magical energy, topped with a flawless, floating Chrono-Crystal.', effects: [{ type: 'ATTACK_PERCENT', value: 0.25 }, { type: 'HP_FLAT', value: 25 }] },
-    { id: 'blade_of_the_verdant_warden', name: 'Blade of the Verdant Warden', rarity: 'Epic', slot: 'Weapon', description: 'A living sword of woven wood and thorns. It slowly heals its wielder.', effects: [{ type: 'ATTACK_FLAT', value: 15 }, { type: 'HP_REGEN', value: 1.0 }] },
-    { id: 'gromril_war-axe', name: 'Gromril War-Axe', rarity: 'Epic', slot: 'Weapon', description: 'An axe forged from near-indestructible Gromril, with a perfectly balanced, devastating head.', effects: [{ type: 'ATTACK_FLAT', value: 20 }, { type: 'BONUS_DMG_VS_SIEGE', value: 0.25 }] },
-    // Legendary
-    { id: 'forgelords_hammer', name: 'Forge-Lord\'s Hammer, "World-Forger"', rarity: 'Legendary', slot: 'Weapon', description: 'The personal hammer of Hephaestus, said to have shaped the first automatons. It strikes with the force of a falling star.', effects: [{ type: 'ATTACK_FLAT', value: 30 }, { type: 'ATTACK_PERCENT', value: 0.20 }, { type: 'BONUS_DMG_VS_SIEGE', value: 0.5 }] },
-    { id: 'grommashs_gorehowl', name: 'Grommash\'s "Gorehowl"', rarity: 'Legendary', slot: 'Weapon', description: 'A legendary axe that howls for blood in the heat of battle. Its thirst is never slaked.', effects: [{ type: 'ATTACK_FLAT', value: 40 }, { type: 'BONUS_DMG_VS_INFANTRY', value: 0.3 }] },
-
-    // ARMOR
-    // Common
-    { id: 'leather_jerkin', name: 'Leather Jerkin', rarity: 'Common', slot: 'Armor', description: 'Padded leather armor. Offers minimal protection.', effects: [{ type: 'HP_FLAT', value: 10 }, { type: 'DEFENSE_FLAT', value: 3 }] },
-    { id: 'tattered_robes', name: 'Tattered Robes', rarity: 'Common', slot: 'Armor', description: 'Simple cloth robes, offering little more than modesty.', effects: [{ type: 'HP_FLAT', value: 5 }, { type: 'DEFENSE_FLAT', value: 1 }] },
-    // Uncommon
-    { id: 'chainmail_hauberk', name: 'Chainmail Hauberk', rarity: 'Uncommon', slot: 'Armor', description: 'A shirt of interlocking iron rings. Good against slashing attacks.', effects: [{ type: 'HP_FLAT', value: 20 }, { type: 'DEFENSE_FLAT', value: 8 }] },
-    { id: 'hardened_leather_armor', name: 'Hardened Leather Armor', rarity: 'Uncommon', slot: 'Armor', description: 'Leather that has been boiled and treated to provide decent protection.', effects: [{ type: 'HP_FLAT', value: 15 }, { type: 'DEFENSE_FLAT', value: 6 }] },
-    { id: 'acolyte_robes', name: 'Acolyte Robes', rarity: 'Uncommon', slot: 'Armor', description: 'Robes enchanted with minor protective wards.', effects: [{ type: 'HP_FLAT', value: 10 }, { type: 'DEFENSE_PERCENT', value: 0.05 }] },
-    // Rare
-    { id: 'steel_plate_armor', name: 'Steel Plate Armor', rarity: 'Rare', slot: 'Armor', description: 'Full plate armor made of fine steel. Offers excellent protection at the cost of mobility.', effects: [{ type: 'HP_FLAT', value: 40 }, { type: 'DEFENSE_FLAT', value: 15 }] },
-    { id: 'elven_leaf-weave_armor', name: 'Elven Leaf-Weave Armor', rarity: 'Rare', slot: 'Armor', description: 'Magically woven leaves that are as strong as leather but light as silk.', effects: [{ type: 'HP_FLAT', value: 25 }, { type: 'DEFENSE_PERCENT', value: 0.10 }] },
-    { id: 'cogwork_carapace', name: 'Cogwork Carapace', rarity: 'Rare', slot: 'Armor', description: 'Reinforced brass plating with internal clockwork mechanisms that aid movement.', effects: [{ type: 'HP_PERCENT', value: 0.10 }, { type: 'DEFENSE_FLAT', value: 12 }] },
-    // Epic
-    { id: 'dwarven_gromril_platemail', name: 'Dwarven Gromril Platemail', rarity: 'Epic', slot: 'Armor', description: 'The pinnacle of dwarven smithing. Nearly impervious to conventional weapons.', effects: [{ type: 'HP_FLAT', value: 75 }, { type: 'DEFENSE_PERCENT', value: 0.20 }] },
-    { id: 'robes_of_the_shadow_weave', name: 'Robes of the Shadow Weave', rarity: 'Epic', slot: 'Armor', description: 'Robes spun from pure shadow. The wearer is difficult to see and strike.', effects: [{ type: 'HP_FLAT', value: 40 }, { type: 'DEFENSE_PERCENT', value: 0.15 }, { type: 'FIRST_STRIKE_CHANCE', value: 0.1 }] },
-    // Legendary
-    { id: 'bulwark_of_the_mountain_king', name: 'Bulwark of the Mountain King', rarity: 'Legendary', slot: 'Armor', description: 'The personal armor of Thorgrim Stonehand. It is said to be unbreakable.', effects: [{ type: 'HP_PERCENT', value: 0.25 }, { type: 'DEFENSE_PERCENT', value: 0.30 }] },
-
-    // ACCESSORIES
-    // Common
-    { id: 'lucky_charm', name: 'Lucky Charm', rarity: 'Common', slot: 'Accessory', description: 'A small, crudely carved wooden charm.', effects: [{ type: 'HP_FLAT', value: 5 }] },
-    { id: 'iron_ring', name: 'Iron Ring', rarity: 'Common', slot: 'Accessory', description: 'A simple ring of cold iron.', effects: [{ type: 'DEFENSE_FLAT', value: 1 }] },
-    // Uncommon
-    { id: 'ring_of_vigor', name: 'Ring of Vigor', rarity: 'Uncommon', slot: 'Accessory', description: 'A simple ring that seems to warm the wearer.', effects: [{ type: 'HP_FLAT', value: 15 }] },
-    { id: 'amulet_of_the_marksman', name: 'Amulet of the Marksman', rarity: 'Uncommon', slot: 'Accessory', description: 'Helps the wearer aim true.', effects: [{ type: 'ATTACK_FLAT', value: 2 }] },
-    { id: 'troll-hide_bracers', name: 'Troll-hide Bracers', rarity: 'Uncommon', slot: 'Accessory', description: 'These tough bracers slowly mend themselves... and their wearer.', effects: [{ type: 'HP_REGEN', value: 0.2 }] },
-    // Rare
-    { id: 'clockwork_targeting_system', name: 'Clockwork Targeting System', rarity: 'Rare', slot: 'Accessory', description: 'A complex series of lenses and gears that helps identify weak points in enemies.', effects: [{ type: 'ATTACK_PERCENT', value: 0.10 }, {type: 'BONUS_DMG_VS_SKIRMISHER', value: 0.2}] },
-    { id: 'heartstone_pendant', name: 'Heartstone Pendant', rarity: 'Rare', slot: 'Accessory', description: 'A fragment of a Heartstone that beats with a slow, steady rhythm, bolstering the life force of the wearer.', effects: [{ type: 'HP_PERCENT', value: 0.15 }] },
-    { id: 'ring_of_regeneration', name: 'Ring of Regeneration', rarity: 'Rare', slot: 'Accessory', description: 'A magical ring that constantly works to close the wearer\'s wounds.', effects: [{ type: 'HP_REGEN', value: 0.5 }] },
-    // Epic
-    { id: 'eye_of_the_watcher_shard', name: 'Eye of the Watcher Shard', rarity: 'Epic', slot: 'Accessory', description: 'A shard from the great monolith. It grants its wearer a fraction of its precognitive abilities.', effects: [{ type: 'DEFENSE_PERCENT', value: 0.10 }, { type: 'FIRST_STRIKE_CHANCE', value: 0.33 }] },
-    { id: 'dragonscale_shield', name: 'Dragonscale Shield', rarity: 'Epic', slot: 'Accessory', description: 'A shield crafted from a single, massive dragon scale. It is incredibly light and nearly indestructible.', effects: [{ type: 'HP_FLAT', value: 50 }, { type: 'DEFENSE_PERCENT', value: 0.15 }] },
-    // Legendary
-    { id: 'crown_of_the_lich_lord', name: 'Crown of the Lich Lord', rarity: 'Legendary', slot: 'Accessory', description: 'Malakor\'s crown, which holds a fragment of his vast intellect and power.', effects: [{ type: 'ATTACK_PERCENT', value: 0.20 }, { type: 'HP_PERCENT', value: 0.20 }] },
-
-    // ITEMS (Non-equipment)
-    { id: 'item_ancient_cog', name: 'Ancient Cog', rarity: 'Uncommon', slot: 'None', description: 'A perfectly preserved gear from a forgotten automaton. It hums with latent energy.', effects: [] },
-    { id: 'item_dragon_heartscale', name: 'Dragon Heartscale', rarity: 'Epic', slot: 'None', description: "A scale taken from near a dragon's heart. It is incredibly durable and warm to the touch.", effects: [] },
-    { id: 'item_flux_in_a_bottle', name: 'Flux-in-a-Bottle', rarity: 'Rare', slot: 'None', description: 'A swirling vortex of raw magic contained in a reinforced vial. Highly unstable.', effects: [] },
-    { id: 'item_map_to_nowhere', name: 'Map to Nowhere', rarity: 'Common', slot: 'None', description: 'An ancient, incomplete map that seems to change every time you look away.', effects: [] },
 ];
 
 export const UNITS: readonly UnitDefinition[] = [
@@ -318,4 +248,5 @@ export const TRAITS_MAP = new Map(TRAITS.map(t => [t.id, t]));
 export const UNIT_TRAITS_MAP = new Map(UNIT_TRAITS.map(t => [t.id, t]));
 export const CHARACTERS_MAP = new Map(CHARACTERS.map(c => [c.id, c]));
 export const WORLD_EVENTS_MAP = new Map(WORLD_EVENTS.map(e => [e.id, e]));
-export const ITEMS_MAP = new Map(ITEMS.map(i => [i.id, i]));
+// ITEMS_MAP is now imported from dataLoader
+export { ITEMS_MAP };

@@ -1,7 +1,6 @@
-
-import React, { useMemo } from 'react';
-import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, Faction, FactionEffectType } from '../types';
-import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL } from '../constants';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, Faction, FactionEffectType, ItemDefinition, StatEffect, EquipmentSlot } from '../types';
+import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL, RARITY_COLORS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
 
@@ -13,6 +12,14 @@ interface SidebarProps {
   soundManager: SoundManager | null;
   isMinimized: boolean;
   onToggleMinimize: () => void;
+}
+
+const getStatusStyles = (status: DiplomaticStatus): { color: string, icon: string } => {
+    switch (status) {
+        case 'War': return { color: 'text-red-400', icon: 'war' };
+        case 'Alliance': return { color: 'text-green-400', icon: 'alliance' };
+        default: return { color: 'text-gray-400', icon: '' };
+    }
 }
 
 const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType, filter?: any): number => {
@@ -30,54 +37,149 @@ const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType,
     return modifier;
 };
 
-const getStatusStyles = (status: DiplomaticStatus): { color: string, icon: string } => {
-    switch (status) {
-        case 'War': return { color: 'text-red-400', icon: 'war' };
-        case 'Alliance': return { color: 'text-green-400', icon: 'alliance' };
-        default: return { color: 'text-gray-400', icon: '' };
-    }
-}
+const ItemTooltip: React.FC<{item: ItemDefinition, targetRef: React.RefObject<HTMLElement>}> = ({ item, targetRef }) => {
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    const [position, setPosition] = useState({ top: -9999, left: 0 });
 
-const getUnitStats = (unit: UnitInstance): { maxHp: number, attack: number } => {
-    const unitDef = UNITS_MAP.get(unit.unitId)!;
-    const factionInfo = FACTIONS_MAP.get(unit.factionId)!;
-    let maxHp = unitDef.hp;
-    let attack = unitDef.atk;
-    const hpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
-    const totalHpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
-    maxHp *= (1 + hpMod + totalHpMod);
-    const atkMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'atk' });
-    const totalAtkMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'atk' });
-    attack *= (1 + atkMod + totalAtkMod);
-    const level = unit.level || 1;
-    if (level > 1) {
-        const bonus = 1 + (level - 1) * STAT_INCREASE_PER_LEVEL;
-        maxHp *= bonus;
-        attack *= bonus;
-    }
-    return { maxHp: Math.floor(maxHp), attack: Math.floor(attack) };
+    useEffect(() => {
+        if (targetRef.current && tooltipRef.current) {
+            const targetRect = targetRef.current.getBoundingClientRect();
+            const tooltipRect = tooltipRef.current.getBoundingClientRect();
+            const sidebar = targetRef.current.closest('aside');
+            if (!sidebar) return;
+
+            const sidebarRect = sidebar.getBoundingClientRect();
+
+            let top = targetRect.top;
+            let left = sidebarRect.left - tooltipRect.width - 10;
+            if (left < 10) {
+                left = sidebarRect.right + 10;
+            }
+
+            setPosition({ top, left });
+        }
+    }, [targetRef]);
+
+    const formatEffect = (type: StatEffect, value: number): string => {
+        const sign = value > 0 ? '+' : '';
+        switch(type) {
+            case 'HP_FLAT': return `${sign}${value} HP`;
+            case 'ATTACK_FLAT': return `${sign}${value} Attack`;
+            case 'DEFENSE_FLAT': return `${sign}${value} Defense`;
+            case 'HP_PERCENT': return `${sign}${value * 100}% HP`;
+            case 'ATTACK_PERCENT': return `${sign}${value * 100}% Attack`;
+            case 'DEFENSE_PERCENT': return `${sign}${value * 100}% Defense`;
+            case 'HP_REGEN': return `+${value} HP/tick`;
+            default: return `${type.replace(/_/g, ' ')}: ${value}`;
+        }
+    };
+
+    return (
+        <div ref={tooltipRef} className="fixed z-50 w-64 p-3 bg-gray-900/80 backdrop-blur-md border border-cyan-500/50 rounded-lg shadow-xl pop-in" style={{...position}}>
+            <h4 className={`font-bold ${RARITY_COLORS[item.rarity]} mb-1`}>{item.name}</h4>
+            <p className="text-xs text-gray-400 mb-2 italic">"{item.description}"</p>
+            <ul className="text-sm space-y-1">
+                {item.effects.map((effect, i) => (
+                    <li key={i} className="text-green-400">{formatEffect(effect.type, effect.value)}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
 
 const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ unit, onBack }) => {
     const unitDef = UNITS_MAP.get(unit.unitId);
     const faction = FACTIONS_MAP.get(unit.factionId);
-    if (!unitDef || !faction) return null;
-    const isHostile = faction.id === 'neutral_hostile';
+    const [hoveredItem, setHoveredItem] = useState<ItemDefinition | null>(null);
+    const itemRefs = useRef<Record<string, HTMLElement | null>>({});
 
-    const { maxHp, attack } = useMemo(() => getUnitStats(unit), [unit]);
+    if (!unitDef || !faction) return null;
+
+    const { maxHp, attack, defense, bonusHp, bonusAtk, bonusDef } = useMemo(() => {
+        const unitDef = UNITS_MAP.get(unit.unitId)!;
+        const factionInfo = FACTIONS_MAP.get(unit.factionId)!;
+    
+        let baseHp = unitDef.hp;
+        let baseAtk = unitDef.atk;
+        let baseDef = unitDef.defense;
+    
+        // Apply Faction Traits
+        const hpFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
+        const totalHpFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
+        baseHp *= (1 + hpFactionMod + totalHpFactionMod);
+    
+        const atkFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'atk' });
+        const totalAtkFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'atk' });
+        baseAtk *= (1 + atkFactionMod + totalAtkFactionMod);
+        
+        // Apply Level Bonus
+        const level = unit.level || 1;
+        if (level > 1) {
+            const bonus = 1 + (level - 1) * STAT_INCREASE_PER_LEVEL;
+            baseHp *= bonus;
+            baseAtk *= bonus;
+        }
+
+        const statBonuses = {
+            flatHp: 0, flatAtk: 0, flatDef: 0,
+            percentHp: 0, percentAtk: 0, percentDef: 0
+        };
+
+        const allEquipment = Object.values(unit.equipment).filter(Boolean) as ItemDefinition[];
+        for (const item of allEquipment) {
+            for (const effect of item.effects) {
+                switch(effect.type) {
+                    case 'HP_FLAT': statBonuses.flatHp += effect.value; break;
+                    case 'ATTACK_FLAT': statBonuses.flatAtk += effect.value; break;
+                    case 'DEFENSE_FLAT': statBonuses.flatDef += effect.value; break;
+                    case 'HP_PERCENT': statBonuses.percentHp += effect.value; break;
+                    case 'ATTACK_PERCENT': statBonuses.percentAtk += effect.value; break;
+                    case 'DEFENSE_PERCENT': statBonuses.percentDef += effect.value; break;
+                }
+            }
+        }
+    
+        const finalMaxHp = Math.floor((baseHp + statBonuses.flatHp) * (1 + statBonuses.percentHp));
+        const finalAttack = Math.floor((baseAtk + statBonuses.flatAtk) * (1 + statBonuses.percentAtk));
+        const finalDefense = Math.floor((baseDef + statBonuses.flatDef) * (1 + statBonuses.percentDef));
+        
+        const baseStatsAfterMods = {
+            hp: Math.floor(baseHp),
+            atk: Math.floor(baseAtk),
+            def: Math.floor(baseDef)
+        };
+
+        return {
+            maxHp: finalMaxHp,
+            attack: finalAttack,
+            defense: finalDefense,
+            bonusHp: finalMaxHp - baseStatsAfterMods.hp,
+            bonusAtk: finalAttack - baseStatsAfterMods.atk,
+            bonusDef: finalDefense - baseStatsAfterMods.def,
+        };
+    }, [unit]);
+
     const xpPercentage = (unit.xp / XP_PER_LEVEL) * 100;
+    
+    const equipmentSlots: { slot: EquipmentSlot; icon: string }[] = [
+        { slot: 'Weapon', icon: 'sword' },
+        { slot: 'Armor', icon: 'shield' },
+        { slot: 'Accessory', icon: 'ring' },
+    ];
 
     return (
         <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 h-full flex flex-col">
-            <div className="flex justify-between items-center border-b-2 pb-2 mb-3" style={{borderColor: isHostile ? '#6b7280' : FACTIONS_MAP.get(faction.id)?.color.replace('-500', '-600').replace('-600', '-700').replace('-400', '-500')}}>
-                 <h3 className="text-xl font-bold text-red-400">Unit Details</h3>
+            {hoveredItem && itemRefs.current[hoveredItem.id] && <ItemTooltip item={hoveredItem} targetRef={{ current: itemRefs.current[hoveredItem.id] }} />}
+
+            <div className="flex justify-between items-center border-b-2 pb-2 mb-3" style={{borderColor: `rgba(var(--selection-glow-rgb), 0.5)`}}>
+                 <h3 className="text-xl font-bold" style={{color: `rgba(var(--selection-glow-rgb), 1)`}}>Unit Details</h3>
                  <button onClick={onBack} className="text-sm text-cyan-400 hover:text-cyan-300">← Back to Tile</button>
             </div>
             
             <div className="text-center mb-2">
                 <h2 className="text-2xl font-bold">{unitDef.name}</h2>
-                <p className={`text-lg font-semibold text-${faction.color}`}>{faction.name}</p>
+                <p className="text-lg font-semibold" style={{color: `rgba(var(--selection-glow-rgb), 0.9)`}}>{faction.name}</p>
                  <p className="text-sm text-gray-400 capitalize">Activity: {unit.currentActivity}</p>
             </div>
 
@@ -91,77 +193,60 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                 </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 text-center mb-4">
+            <div className="grid grid-cols-3 gap-2 text-center mb-4">
                 <div>
                     <p className="text-sm text-gray-400">HP</p>
-                    <p className="text-xl font-mono font-bold">{Math.ceil(unit.hp)} / {maxHp}</p>
-                </div>
-                 <div>
-                    <p className="text-sm text-gray-400">Attack</p>
-                    <p className="text-xl font-mono font-bold">{attack}</p>
-                </div>
-                 <div>
-                    <p className="text-sm text-gray-400">Role</p>
-                    <p className="text-xl font-bold">{unitDef.role}</p>
+                    <p className="text-lg font-mono font-bold">{Math.ceil(unit.hp)} / {maxHp} {bonusHp !== 0 && <span className={bonusHp > 0 ? "text-green-400" : "text-red-400"}>({bonusHp > 0 ? `+${bonusHp}`: bonusHp})</span>}</p>
                 </div>
                 <div>
-                    <p className="text-sm text-gray-400">Kills</p>
-                    <p className="text-xl font-mono font-bold">{unit.killCount}</p>
+                    <p className="text-sm text-gray-400">Attack</p>
+                    <p className="text-lg font-mono font-bold">{attack} {bonusAtk > 0 && <span className="text-green-400">(+{bonusAtk})</span>}</p>
+                </div>
+                <div>
+                    <p className="text-sm text-gray-400">Defense</p>
+                    <p className="text-lg font-mono font-bold">{defense}% {bonusDef > 0 && <span className="text-green-400">(+{bonusDef}%)</span>}</p>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto mt-2 space-y-4">
-                {unitDef.traitIds && unitDef.traitIds.length > 0 && (
-                    <div className="pt-3 border-t border-gray-700">
-                        <h4 className="text-lg font-bold text-cyan-300 mb-2">Traits</h4>
-                        <ul className="space-y-3">
-                            {unitDef.traitIds.map(traitId => {
-                                const trait = UNIT_TRAITS_MAP.get(traitId);
-                                if (!trait) return null;
-                                return (
-                                    <li key={traitId} className="bg-black/20 p-2 rounded">
-                                        <strong className="text-cyan-400">{trait.name}:</strong>
-                                        <p className="text-gray-300 text-sm ml-1">{trait.description}</p>
-                                    </li>
-                                )
-                            })}
-                        </ul>
+                <div className="pt-3 border-t border-gray-700">
+                    <h4 className="text-lg font-bold text-cyan-300 mb-2">Equipment</h4>
+                    <div className="space-y-2">
+                        {equipmentSlots.map(({ slot, icon }) => {
+                            const item = unit.equipment[slot];
+                            return (
+                                <div key={slot} className="flex items-center bg-black/20 p-2 rounded">
+                                    <Icon name={icon} className="w-6 h-6 text-cyan-400 mr-3" />
+                                    <div 
+                                        ref={el => { itemRefs.current[item?.id || slot] = el; }}
+                                        onMouseEnter={() => item && setHoveredItem(item)}
+                                        onMouseLeave={() => setHoveredItem(null)}
+                                        className="flex-1"
+                                    >
+                                        <p className="font-semibold">{slot}</p>
+                                        {item ? <p className={`text-sm ${RARITY_COLORS[item.rarity]}`}>{item.name}</p> : <p className="text-sm text-gray-500 italic">Empty</p>}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
-                )}
-                 {unit.inventory && unit.inventory.length > 0 && (
+                </div>
+
+                {unit.inventory && unit.inventory.length > 0 && (
                     <div className="pt-3 border-t border-gray-700">
                         <h4 className="text-lg font-bold text-cyan-300 mb-2 flex items-center"><Icon name="briefcase" className="w-5 h-5 mr-2" />Inventory</h4>
-                        <ul className="space-y-3">
+                        <ul className="space-y-1 text-sm">
                             {unit.inventory.map((item, index) => (
-                                <li key={`${item.id}-${index}`} className="bg-black/20 p-2 rounded">
-                                    <strong className="text-cyan-400">{item.name}</strong>
-                                    <p className="text-gray-300 text-sm ml-1">{item.description}</p>
+                                <li 
+                                    key={`${item.id}-${index}`} 
+                                    ref={el => { itemRefs.current[`inv-${item.id}-${index}`] = el; }}
+                                    onMouseEnter={() => setHoveredItem(item)}
+                                    onMouseLeave={() => setHoveredItem(null)}
+                                    className={`bg-black/20 p-2 rounded ${RARITY_COLORS[item.rarity]}`}
+                                >
+                                    {item.name}
                                 </li>
                             ))}
-                        </ul>
-                    </div>
-                )}
-                 {unit.combatLog && unit.combatLog.length > 0 && (
-                    <div className="pt-3 border-t border-gray-700">
-                        <h4 className="text-lg font-bold text-cyan-300 mb-2">Battle Log</h4>
-                        <ul className="space-y-2 text-sm">
-                            {unit.combatLog.map((log, index) => {
-                                const opponentDef = UNITS_MAP.get(log.opponentUnitId);
-                                if (!opponentDef) return null;
-
-                                return (
-                                    <li key={index} className="bg-black/20 p-2 rounded">
-                                        <div className="flex justify-between items-center text-gray-400 text-xs mb-1">
-                                            <span>vs. {opponentDef.name}</span>
-                                            <span>Tick {log.tick}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p><span className="text-red-400 font-semibold">Dealt {log.damageDealt} dmg.</span>{log.isFatalToOpponent && <span className="text-red-500 font-bold ml-1">(Defeated!)</span>}</p>
-                                            <p><span className="text-yellow-400 font-semibold">Took {log.damageTaken} dmg.</span>{log.isFatalToSelf && <span className="text-yellow-500 font-bold ml-1">(Fallen)</span>}</p>
-                                        </div>
-                                    </li>
-                                )
-                            })}
                         </ul>
                     </div>
                 )}

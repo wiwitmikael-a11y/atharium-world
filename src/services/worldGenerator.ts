@@ -153,10 +153,17 @@ function placeFactions(world: TileData[][], factions: Record<string, FactionStat
                     if (searchRadius > 0 && Math.abs(dx) < searchRadius && Math.abs(dy) < searchRadius) continue;
                     const x = startX + dx;
                     const y = startY + dy;
-                    if (x < 1 || x >= WORLD_SIZE - 1 || y < 1 || y >= WORLD_SIZE - 1) continue;
+                    
+                    if (x < 0 || x >= WORLD_SIZE - 1 || y < 0 || y >= WORLD_SIZE - 1) continue;
+                    
                     const rootTile = world[y][x];
                     const isPreferredBiome = factionInfo.preferredBiomes.length === 0 || factionInfo.preferredBiomes.includes(rootTile.biomeId);
-                    const areaIsEmpty = [world[y][x], world[y+1][x], world[y][x+1], world[y+1][x+1]].every(t => !t.ownerFactionId && !t.infrastructureId && !t.worldEventId && !t.resourceId && !t.partOfInfrastructure);
+                    
+                    const tilesToCheck = [world[y]?.[x], world[y+1]?.[x], world[y]?.[x+1], world[y+1]?.[x+1]];
+                    if (tilesToCheck.some(t => t === undefined)) continue;
+
+                    const areaIsEmpty = tilesToCheck.every(t => t && !t.ownerFactionId && !t.infrastructureId && !t.worldEventId && !t.resourceId && !t.partOfInfrastructure);
+                    
                     if (isPreferredBiome && areaIsEmpty) {
                         const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet')!;
                         const maxHp = (Object.values(hamletDef.upgradeCost!).reduce((s, a) => s + a, 0)) * INFRA_HP_COST_MULTIPLIER;
@@ -207,7 +214,7 @@ export function generateInitialGameState(): GameState {
   placeBiomes(world);
   const factionStates: Record<string, FactionState> = {};
   const mainFactions = FACTIONS.filter(f => f.id !== 'neutral_hostile');
-  const startingResources = { iron_ore: 50, steamwood_log: 50 };
+  const startingResources = { 'steamwood_plank': 20, 'iron_ingot': 20 };
   mainFactions.forEach((faction, index) => {
     const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = { Raw: { current: 0, capacity: 0 }, Processed: { current: 0, capacity: 0 }, Component: { current: 0, capacity: 0 }, Exotic: { current: 0, capacity: 0 }, };
     const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet');
