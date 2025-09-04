@@ -1,12 +1,8 @@
 
-
-
-
-
 import { useEffect, useRef } from 'react';
 // FIX: Import GameEventType to satisfy the updated GameEvent interface.
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, Resource, GameEventType } from '../types';
-import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, ITEMS, RESOURCE_SPAWN_CHANCES, RESOURCES, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL } from '../constants';
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType } from '../types';
+import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, ITEMS, RESOURCE_SPAWN_CHANCES, RESOURCES, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL } from '../constants';
 
 const getFactionOwnedTiles = (world: TileData[][], factionId: string) => world.flat().filter(t => t.ownerFactionId === factionId);
 

@@ -1,6 +1,5 @@
 
 import React, { useEffect, useRef } from 'react';
-import Icon from './Icon';
 
 interface HelpModalProps {
   onClose: () => void;

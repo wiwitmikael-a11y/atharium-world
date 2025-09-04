@@ -125,7 +125,7 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
             {resourceAsset && (
               <img src={resourceAsset} alt={resource?.name} className="absolute object-contain" style={{ width: '60%', height: '60%', left: '50%', top: '50%', transform: 'translate(-50%, -70%)' }} draggable="false" />
             )}
-            {infrastructureAsset && !infrastructure.multiTile && (
+            {infrastructure && infrastructureAsset && !infrastructure.multiTile && (
               <>
                 <img
                   src={infrastructureAsset} alt={infrastructure?.name} className="absolute transition-transform group-hover:scale-105 object-contain"
