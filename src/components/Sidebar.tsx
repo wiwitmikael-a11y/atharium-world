@@ -1,7 +1,7 @@
+
 import React, { useMemo } from 'react';
-// FIX: Import Faction and FactionEffectType to be used in getFactionModifier helper function.
 import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, Faction, FactionEffectType } from '../types';
-import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS } from '../constants';
+import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
 
@@ -15,15 +15,12 @@ interface SidebarProps {
   onToggleMinimize: () => void;
 }
 
-// FIX: Add getFactionModifier helper function to calculate faction-based stat modifications.
-// This function was missing, causing errors in UnitDetailView.
 const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType, filter?: any): number => {
     let modifier = 0;
     if (!factionInfo.traits) return 0;
     for (const trait of factionInfo.traits) {
         for (const effect of trait.effects) {
             if (effect.type === effectType) {
-                // Apply filters for specificity
                 if (filter?.unitRole && effect.unitRole && filter.unitRole !== effect.unitRole) continue;
                 if (filter?.stat && effect.stat && filter.stat !== effect.stat) continue;
                 modifier += effect.value;
@@ -41,22 +38,35 @@ const getStatusStyles = (status: DiplomaticStatus): { color: string, icon: strin
     }
 }
 
+const getUnitStats = (unit: UnitInstance): { maxHp: number, attack: number } => {
+    const unitDef = UNITS_MAP.get(unit.unitId)!;
+    const factionInfo = FACTIONS_MAP.get(unit.factionId)!;
+    let maxHp = unitDef.hp;
+    let attack = unitDef.atk;
+    const hpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
+    const totalHpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
+    maxHp *= (1 + hpMod + totalHpMod);
+    const atkMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'atk' });
+    const totalAtkMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'atk' });
+    attack *= (1 + atkMod + totalAtkMod);
+    const level = unit.level || 1;
+    if (level > 1) {
+        const bonus = 1 + (level - 1) * STAT_INCREASE_PER_LEVEL;
+        maxHp *= bonus;
+        attack *= bonus;
+    }
+    return { maxHp: Math.floor(maxHp), attack: Math.floor(attack) };
+};
+
+
 const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ unit, onBack }) => {
     const unitDef = UNITS_MAP.get(unit.unitId);
     const faction = FACTIONS_MAP.get(unit.factionId);
     if (!unitDef || !faction) return null;
     const isHostile = faction.id === 'neutral_hostile';
 
-    const maxHp = useMemo(() => {
-        const factionInfo = FACTIONS_MAP.get(unit.factionId);
-        if (!factionInfo) return unitDef.hp;
-        
-        // FIX: Replaced incorrect HP calculation with a call to getFactionModifier to correctly calculate max HP based on faction traits.
-        const hpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
-        const totalHpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
-        return Math.floor(unitDef.hp * (1 + hpMod + totalHpMod));
-    }, [unit.factionId, unitDef]);
-
+    const { maxHp, attack } = useMemo(() => getUnitStats(unit), [unit]);
+    const xpPercentage = (unit.xp / XP_PER_LEVEL) * 100;
 
     return (
         <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 h-full flex flex-col">
@@ -65,9 +75,20 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                  <button onClick={onBack} className="text-sm text-cyan-400 hover:text-cyan-300">← Back to Tile</button>
             </div>
             
-            <div className="text-center mb-4">
+            <div className="text-center mb-2">
                 <h2 className="text-2xl font-bold">{unitDef.name}</h2>
                 <p className={`text-lg font-semibold text-${faction.color}`}>{faction.name}</p>
+                 <p className="text-sm text-gray-400 capitalize">Activity: {unit.currentActivity}</p>
+            </div>
+
+             <div className="mb-4">
+                <div className="flex justify-between items-baseline mb-1">
+                    <p className="text-sm font-bold">Level {unit.level}</p>
+                    <p className="text-xs font-mono text-gray-400">{unit.xp} / {XP_PER_LEVEL} XP</p>
+                </div>
+                <div className="w-full bg-gray-900/50 rounded-full h-2 border border-gray-700">
+                    <div className="bg-yellow-400 h-full rounded-full" style={{ width: `${xpPercentage}%` }}></div>
+                </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4 text-center mb-4">
@@ -77,7 +98,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                 </div>
                  <div>
                     <p className="text-sm text-gray-400">Attack</p>
-                    <p className="text-xl font-mono font-bold">{unitDef.atk}</p>
+                    <p className="text-xl font-mono font-bold">{attack}</p>
                 </div>
                  <div>
                     <p className="text-sm text-gray-400">Role</p>
@@ -91,7 +112,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
 
             <div className="flex-1 overflow-y-auto mt-2 space-y-4">
                 {unitDef.traitIds && unitDef.traitIds.length > 0 && (
-                    <div>
+                    <div className="pt-3 border-t border-gray-700">
                         <h4 className="text-lg font-bold text-cyan-300 mb-2">Traits</h4>
                         <ul className="space-y-3">
                             {unitDef.traitIds.map(traitId => {
@@ -104,6 +125,19 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                                     </li>
                                 )
                             })}
+                        </ul>
+                    </div>
+                )}
+                 {unit.inventory && unit.inventory.length > 0 && (
+                    <div className="pt-3 border-t border-gray-700">
+                        <h4 className="text-lg font-bold text-cyan-300 mb-2 flex items-center"><Icon name="briefcase" className="w-5 h-5 mr-2" />Inventory</h4>
+                        <ul className="space-y-3">
+                            {unit.inventory.map((item, index) => (
+                                <li key={`${item.id}-${index}`} className="bg-black/20 p-2 rounded">
+                                    <strong className="text-cyan-400">{item.name}</strong>
+                                    <p className="text-gray-300 text-sm ml-1">{item.description}</p>
+                                </li>
+                            ))}
                         </ul>
                     </div>
                 )}
@@ -122,14 +156,8 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                                             <span>Tick {log.tick}</span>
                                         </div>
                                         <div className="space-y-1">
-                                            <p>
-                                                <span className="text-red-400 font-semibold">Dealt {log.damageDealt} dmg.</span>
-                                                {log.isFatalToOpponent && <span className="text-red-500 font-bold ml-1">(Defeated!)</span>}
-                                            </p>
-                                            <p>
-                                                <span className="text-yellow-400 font-semibold">Took {log.damageTaken} dmg.</span>
-                                                {log.isFatalToSelf && <span className="text-yellow-500 font-bold ml-1">(Fallen)</span>}
-                                            </p>
+                                            <p><span className="text-red-400 font-semibold">Dealt {log.damageDealt} dmg.</span>{log.isFatalToOpponent && <span className="text-red-500 font-bold ml-1">(Defeated!)</span>}</p>
+                                            <p><span className="text-yellow-400 font-semibold">Took {log.damageTaken} dmg.</span>{log.isFatalToSelf && <span className="text-yellow-500 font-bold ml-1">(Fallen)</span>}</p>
                                         </div>
                                     </li>
                                 )
@@ -164,7 +192,6 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedTile, gameState, onSelectUnit
     if (!ownerFaction || !ownerFactionState) return [];
     
     const characters: { name: string; isLeader: boolean; location: {x: number, y: number} }[] = [];
-    
     const leader = ownerFactionState.leader;
     let leaderLocation: {x: number, y: number} | null = null;
     
@@ -172,11 +199,9 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedTile, gameState, onSelectUnit
         const heroDef = UNITS.find(u => u.factionId === ownerFaction.id && u.role === 'Hero');
         if (heroDef) {
             const leaderUnit = gameState.world.flat().flatMap(t => t.units).find(u => u.unitId === heroDef.id);
-            if (leaderUnit) {
-                leaderLocation = { x: leaderUnit.x, y: leaderUnit.y };
-            }
+            if (leaderUnit) leaderLocation = { x: leaderUnit.x, y: leaderUnit.y };
         }
-    } else { // 'settled'
+    } else {
         const settlements = gameState.world.flat().filter(t => t.ownerFactionId === ownerFaction.id && t.infrastructureId?.startsWith('settlement_'));
         if (settlements.length > 0) {
             settlements.sort((a,b) => (INFRASTRUCTURE_MAP.get(b.infrastructureId!)?.tier || 0) - (INFRASTRUCTURE_MAP.get(a.infrastructureId!)?.tier || 0));
@@ -241,23 +266,9 @@ const renderContent = () => {
 
                  {ownerFaction && ownerFactionState && (
                   <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
-                    <h3 className={`text-lg font-bold border-b-2 border-${ownerFaction.color} mb-2 pb-1 text-${ownerFaction.color}`}>
-                      Owner: {ownerFaction.name}
-                    </h3>
-                    
-                    {ownerFaction.traits.map(trait => (
-                      <div key={trait.name} className="mb-2">
-                        <h4 className="font-semibold text-gray-300">{trait.name}</h4>
-                        <p className="text-sm text-gray-400">{trait.description}</p>
-                      </div>
-                    ))}
-                    
-                     {isSettlement && (
-                        <div className="text-sm my-2">
-                            <span>Population: </span>
-                            <span className="font-mono">{ownerFactionState.population} / {infrastructure?.populationCapacity || 0}</span>
-                        </div>
-                    )}
+                    <h3 className={`text-lg font-bold border-b-2 border-${ownerFaction.color} mb-2 pb-1 text-${ownerFaction.color}`}>Owner: {ownerFaction.name}</h3>
+                    {ownerFaction.traits.map(trait => (<div key={trait.name} className="mb-2"><h4 className="font-semibold text-gray-300">{trait.name}</h4><p className="text-sm text-gray-400">{trait.description}</p></div>))}
+                     {isSettlement && (<div className="text-sm my-2"><span>Population: </span><span className="font-mono">{ownerFactionState.population} / {infrastructure?.populationCapacity || 0}</span></div>)}
                     {isSettlement && ownerFactionState.storage ? (
                         <div className="space-y-2">
                             {Object.entries(ownerFactionState.storage).map(([tier, data]) => {
@@ -267,22 +278,10 @@ const renderContent = () => {
                                 const tierName = TIER_NAMES[tier as ResourceTier];
                                 return (
                                 <div key={tier}>
-                                    <h4 className="font-semibold text-gray-300 flex justify-between">
-                                        <span>{tierName}</span>
-                                        <span className={`font-mono ${isNearCapacity ? 'text-yellow-400' : ''}`}>{Math.floor(data.current)} / {data.capacity}</span>
-                                    </h4>
-                                    <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
-                                        <div className={`h-1.5 rounded-full ${isNearCapacity ? 'bg-yellow-500' : 'bg-cyan-500'}`} style={{ width: `${percentage}%` }}></div>
-                                    </div>
+                                    <h4 className="font-semibold text-gray-300 flex justify-between"><span>{tierName}</span><span className={`font-mono ${isNearCapacity ? 'text-yellow-400' : ''}`}>{Math.floor(data.current)} / {data.capacity}</span></h4>
+                                    <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1"><div className={`h-1.5 rounded-full ${isNearCapacity ? 'bg-yellow-500' : 'bg-cyan-500'}`} style={{ width: `${percentage}%` }}></div></div>
                                     <ul className="text-xs text-gray-400 mt-1 pl-2">
-                                        {Object.entries(ownerFactionState.resources)
-                                            .filter(([resId]) => RESOURCES_MAP.get(resId)?.tier === tier && ownerFactionState.resources[resId] > 0)
-                                            .map(([resId, amount]) => (
-                                                <li key={resId} className="flex justify-between">
-                                                    <span>{RESOURCES_MAP.get(resId)?.name}</span>
-                                                    <span>{Math.floor(amount)}</span>
-                                                </li>
-                                        ))}
+                                        {Object.entries(ownerFactionState.resources).filter(([resId]) => RESOURCES_MAP.get(resId)?.tier === tier && ownerFactionState.resources[resId] > 0).map(([resId, amount]) => (<li key={resId} className="flex justify-between"><span>{RESOURCES_MAP.get(resId)?.name}</span><span>{Math.floor(amount)}</span></li>))}
                                     </ul>
                                 </div>
                                 );
@@ -293,18 +292,7 @@ const renderContent = () => {
                         <div className="mt-2 pt-2 border-t border-gray-600">
                             <h4 className="font-semibold text-gray-300 flex items-center"><Icon name="user" className="w-4 h-4 mr-2" />Notable Characters:</h4>
                             <ul className="text-sm space-y-1 mt-1">
-                                {notableCharacters.map(char => (
-                                    <li key={char.name}>
-                                        <button 
-                                            onClick={() => onPanToLocation(char.location)} 
-                                            onMouseEnter={() => soundManager?.playUIHoverSFX()}
-                                            className="text-cyan-400 hover:text-cyan-200 hover:underline text-left"
-                                        >
-                                            {char.isLeader && '⭐ '}
-                                            {char.name}
-                                        </button>
-                                    </li>
-                                ))}
+                                {notableCharacters.map(char => (<li key={char.name}><button onClick={() => onPanToLocation(char.location)} onMouseEnter={() => soundManager?.playUIHoverSFX()} className="text-cyan-400 hover:text-cyan-200 hover:underline text-left">{char.isLeader && '⭐ '}{char.name}</button></li>))}
                             </ul>
                         </div>
                     )}
@@ -319,9 +307,7 @@ const renderContent = () => {
                                      <li key={id} className="flex justify-between items-center">
                                         <span>{otherFaction.name}</span>
                                         <div className="flex items-center space-x-2">
-                                            <span className={`font-semibold ${color}`}>
-                                              {relation.status}
-                                            </span>
+                                            <span className={`font-semibold ${color}`}>{relation.status}</span>
                                             {icon && <Icon name={icon} className={`w-4 h-4 ${color}`} />}
                                             <span className="font-mono text-xs w-8 text-right">({Math.round(relation.opinion)})</span>
                                         </div>
@@ -330,43 +316,38 @@ const renderContent = () => {
                             })}
                          </ul>
                     </div>
-
                   </div>
                 )}
-                 {worldEvent && (
-                    <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
-                        <h3 className="text-lg font-bold text-purple-400 mb-1">{worldEvent.type}: {worldEvent.name}</h3>
-                        <p className="text-sm text-gray-400">{worldEvent.description}</p>
-                    </div>
-                )}
+                 {worldEvent && (<div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700"><h3 className="text-lg font-bold text-purple-400 mb-1">{worldEvent.type}: {worldEvent.name}</h3><p className="text-sm text-gray-400">{worldEvent.description}</p></div>)}
                  {infrastructure && (
                     <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
-                        <h3 className="text-lg font-bold text-cyan-300 mb-1">
-                            {isSettlement ? `Settlement (Tier ${infrastructure.tier})` : 'Infrastructure'}
-                        </h3>
+                        <h3 className="text-lg font-bold text-cyan-300 mb-1">{isSettlement ? `Settlement (Tier ${infrastructure.tier})` : 'Infrastructure'}</h3>
                         <p className="text-md">{infrastructure.name}</p>
                         <p className="text-sm text-gray-400">{infrastructure.description}</p>
+                        
+                        {infrastructure.addsStorage && (
+                            <div className="mt-2 pt-2 border-t border-gray-700">
+                                <h4 className="font-semibold text-gray-300 text-sm">Storage Bonus:</h4>
+                                <ul className="text-xs text-gray-400 list-disc list-inside ml-4">
+                                    {Object.entries(infrastructure.addsStorage).map(([tier, amount]) => (
+                                        <li key={tier}>
+                                            + {amount} {TIER_NAMES[tier as ResourceTier]} Capacity
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
 
                         {isSettlement && infrastructure.upgradesTo && infrastructure.upgradeCost && (
                             <div className="mt-2 pt-2 border-t border-gray-700">
                                 <h4 className="font-semibold text-gray-300 text-sm">Upgrade to {INFRASTRUCTURE_MAP.get(infrastructure.upgradesTo)?.name}</h4>
                                 <p className="text-xs text-gray-500 mb-1">Increases population and storage capacity.</p>
-                                <ul className="text-xs text-gray-400">
-                                    {Object.entries(infrastructure.upgradeCost).map(([id, amount]) => {
-                                        const res = RESOURCES_MAP.get(id);
-                                        return <li key={id}>- {amount} {res?.name || id}</li>
-                                    })}
-                                </ul>
+                                <ul className="text-xs text-gray-400">{Object.entries(infrastructure.upgradeCost).map(([id, amount]) => (<li key={id}>- {amount} {RESOURCES_MAP.get(id)?.name || id}</li>))}</ul>
                             </div>
                         )}
                     </div>
                 )}
-                 {resource && (
-                  <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
-                    <h3 className="text-lg font-bold text-yellow-400 mb-1">Resource Deposit</h3>
-                    <p className="text-md">{resource.name} <span className="text-xs text-gray-400">({resource.tier} - {resource.rarity})</span></p>
-                  </div>
-                )}
+                 {resource && (<div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700"><h3 className="text-lg font-bold text-yellow-400 mb-1">Resource Deposit</h3><p className="text-md">{resource.name} <span className="text-xs text-gray-400">({resource.tier} - {resource.rarity})</span></p></div>)}
                  {selectedTile.units.length > 0 && (
                   <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                     <h3 className="text-lg font-bold text-red-400 mb-2">Units ({selectedTile.units.length})</h3>
@@ -375,13 +356,8 @@ const renderContent = () => {
                         const isSelected = gameState.selectedUnitId === unit.id;
                         return (
                           <UnitListItem
-                            key={unit.id}
-                            unit={unit}
-                            isSelected={isSelected}
-                            onClick={() => {
-                              onSelectUnit(unit.id);
-                              soundManager?.playSFX('ui_click_subtle');
-                            }}
+                            key={unit.id} unit={unit} isSelected={isSelected}
+                            onClick={() => { onSelectUnit(unit.id); soundManager?.playSFX('ui_click_subtle'); }}
                             onMouseEnter={() => soundManager?.playUIHoverSFX()}
                           />
                         );
@@ -397,22 +373,12 @@ const renderContent = () => {
   return (
     <aside className={`absolute top-0 right-0 h-full flex flex-col transition-all duration-300 ease-in-out ${isMinimized ? 'w-4' : 'w-80'} bg-gray-900/70 backdrop-blur-md border-l-2 border-cyan-400 shadow-2xl shadow-cyan-400/30 z-40`}>
         <div className="absolute top-1/2 -translate-y-1/2 w-8 h-14 -left-4 flex items-center z-20">
-            <button 
-                onClick={() => {
-                    onToggleMinimize();
-                    soundManager?.playSFX('ui_click_subtle');
-                }} 
-                className="w-full h-full bg-gray-800/90 hover:bg-cyan-800/90 rounded-l-lg flex items-center justify-center transition-colors duration-200"
-                aria-label={isMinimized ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
+            <button onClick={() => { onToggleMinimize(); soundManager?.playSFX('ui_click_subtle'); }} className="w-full h-full bg-gray-800/90 hover:bg-cyan-800/90 rounded-l-lg flex items-center justify-center transition-colors duration-200" aria-label={isMinimized ? 'Expand sidebar' : 'Collapse sidebar'}>
                 <Icon name={isMinimized ? 'chevron-left' : 'chevron-right'} className="w-6 h-6 text-cyan-300" />
             </button>
         </div>
-        
         <div className={`h-full w-full overflow-hidden transition-opacity duration-200 ${isMinimized ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-            <div className="p-4 h-full w-80 overflow-y-auto text-white">
-                {renderContent()}
-            </div>
+            <div className="p-4 h-full w-80 overflow-y-auto text-white">{renderContent()}</div>
         </div>
     </aside>
   );

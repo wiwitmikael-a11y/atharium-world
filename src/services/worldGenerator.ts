@@ -1,7 +1,6 @@
 
-
-import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP, STARTING_YEAR } from '../constants';
-import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier, Infrastructure } from '../types';
+import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP, RESOURCE_SPAWN_CHANCES, STARTING_YEAR, INFRA_HP_COST_MULTIPLIER } from '../constants';
+import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier, UnitInstance } from '../types';
 
 function getRandomInt(min: number, max: number): number {
   min = Math.ceil(min);
@@ -9,7 +8,6 @@ function getRandomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Helper to calculate faction modifiers, duplicated from game loop for use in generation
 const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType, filter?: any): number => {
     let modifier = 0;
     if (!factionInfo.traits) return 0;
@@ -27,7 +25,8 @@ const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType,
 
 const getInitialHp = (unitDef: UnitDefinition, factionInfo: Faction): number => {
     const hpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
-    return Math.floor(unitDef.hp * (1 + hpMod));
+    const totalHpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
+    return Math.floor(unitDef.hp * (1 + hpMod + totalHpMod));
 };
 
 function createEmptyWorld(): TileData[][] {
@@ -41,80 +40,56 @@ function createEmptyWorld(): TileData[][] {
   );
 }
 
-function smoothBiomes(world: TileData[][]): TileData[][] {
-    const newWorld = JSON.parse(JSON.stringify(world));
-    for (let y = 0; y < WORLD_SIZE; y++) {
-        for (let x = 0; x < WORLD_SIZE; x++) {
-            const neighborCounts: Record<string, number> = {};
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    const nx = x + dx;
-                    const ny = y + dy;
-                    if (nx >= 0 && nx < WORLD_SIZE && ny >= 0 && ny < WORLD_SIZE) {
-                        const neighborBiome = world[ny][nx].biomeId;
-                        neighborCounts[neighborBiome] = (neighborCounts[neighborBiome] || 0) + 1;
+function generateNoiseMap(size: number, passes: number): number[][] {
+    let map = Array.from({ length: size }, () => Array.from({ length: size }, () => Math.random()));
+    for (let pass = 0; pass < passes; pass++) {
+        const newMap = JSON.parse(JSON.stringify(map));
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                let total = 0; let count = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const nx = x + dx; const ny = y + dy;
+                        if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+                            total += map[ny][nx]; count++;
+                        }
                     }
                 }
+                newMap[y][x] = total / count;
             }
-
-            let dominantBiome = world[y][x].biomeId;
-            let maxCount = 0;
-            for (const biomeId in neighborCounts) {
-                if (neighborCounts[biomeId] > maxCount) {
-                    maxCount = neighborCounts[biomeId];
-                    dominantBiome = biomeId;
-                }
-            }
-            newWorld[y][x].biomeId = dominantBiome;
         }
+        map = newMap;
     }
-    return newWorld;
+    return map;
 }
 
-
 function placeBiomes(world: TileData[][]): void {
-  // 1. Seed the world with random biomes
-  for (let y = 0; y < WORLD_SIZE; y++) {
-    for (let x = 0; x < WORLD_SIZE; x++) {
-      world[y][x].biomeId = BIOMES[getRandomInt(0, BIOMES.length - 1)].id;
+    const elevationMap = generateNoiseMap(WORLD_SIZE, 4);
+    const humidityMap = generateNoiseMap(WORLD_SIZE, 4);
+    const magicMap = generateNoiseMap(WORLD_SIZE, 5);
+    for (let y = 0; y < WORLD_SIZE; y++) {
+        for (let x = 0; x < WORLD_SIZE; x++) {
+            const elevation = elevationMap[y][x];
+            const humidity = humidityMap[y][x];
+            const magic = magicMap[y][x];
+            if (magic > 0.75) world[y][x].biomeId = 'atharium_wastes';
+            else if (elevation > 0.6) world[y][x].biomeId = humidity > 0.5 ? 'tundra' : 'ashlands';
+            else if (elevation < 0.4) world[y][x].biomeId = humidity > 0.5 ? 'gloomwell' : 'wasteland';
+            else world[y][x].biomeId = humidity > 0.55 ? 'gloomwell' : 'verdant';
+        }
     }
-  }
-
-  // 2. Smooth the biomes multiple times to create clusters
-  let smoothedWorld = world;
-  for (let i = 0; i < 4; i++) { // 4 passes for good clustering
-    smoothedWorld = smoothBiomes(smoothedWorld);
-  }
-  
-  // Apply the final smoothed world back
-  for (let y = 0; y < WORLD_SIZE; y++) {
-    for (let x = 0; x < WORLD_SIZE; x++) {
-      world[y][x].biomeId = smoothedWorld[y][x].biomeId;
-    }
-  }
 }
 
 function placeResources(world: TileData[][]): void {
-  const resourceSpawnChances = {
-    Common: 0.1,
-    Uncommon: 0.05,
-    Rare: 0.02,
-    Exotic: 0.005
-  };
-  
   const rawResources = RESOURCES.filter(r => r.tier === 'Raw');
-
   for (let y = 0; y < WORLD_SIZE; y++) {
     for (let x = 0; x < WORLD_SIZE; x++) {
         const tile = world[y][x];
-        if (tile.resourceId) continue;
-        
+        if (tile.resourceId || tile.ownerFactionId) continue;
         for (const resource of rawResources) {
-            if (resource.biomes?.includes(tile.biomeId)) {
-                if (Math.random() < resourceSpawnChances[resource.rarity]) {
-                    tile.resourceId = resource.id;
-                    break; // Only one resource per tile
-                }
+            if (resource.biomes?.includes(tile.biomeId) && Math.random() < RESOURCE_SPAWN_CHANCES[resource.rarity]) {
+                tile.resourceId = resource.id;
+                break;
             }
         }
     }
@@ -124,220 +99,137 @@ function placeResources(world: TileData[][]): void {
 function placeWorldEvents(world: TileData[][]): void {
     const discoveries = WORLD_EVENTS.filter(e => e.type === 'Discovery');
     let placedCount = 0;
-    const maxEvents = 2; // Place up to 2 random discovery events at start
-
+    const maxEvents = 2;
     while (placedCount < maxEvents && discoveries.length > 0) {
-        const eventIndex = getRandomInt(0, discoveries.length - 1);
-        const eventToPlace = discoveries.splice(eventIndex, 1)[0];
-
-        let placed = false;
-        let attempts = 0;
-        while (!placed && attempts < 100) { // Try 100 times to find a spot
+        const eventToPlace = discoveries.splice(getRandomInt(0, discoveries.length - 1), 1)[0];
+        let placed = false; let attempts = 0;
+        while (!placed && attempts < 100) {
             const x = getRandomInt(0, WORLD_SIZE - 1);
             const y = getRandomInt(0, WORLD_SIZE - 1);
             const tile = world[y][x];
-
-            if (!tile.worldEventId && !tile.infrastructureId && !tile.resourceId) { // Place on empty tiles
+            if (!tile.worldEventId && !tile.infrastructureId && !tile.resourceId && !tile.ownerFactionId) {
                 tile.worldEventId = eventToPlace.id;
                 placed = true;
             }
             attempts++;
         }
-        if (placed) {
-          placedCount++;
-        }
+        if (placed) placedCount++;
     }
+}
+
+function createUnit(id: number, unitDef: UnitDefinition, factionInfo: Faction, x: number, y: number): UnitInstance {
+    return {
+        id, unitId: unitDef.id, factionId: factionInfo.id, hp: getInitialHp(unitDef, factionInfo), x, y,
+        level: 1, xp: 0, killCount: 0, combatLog: [],
+        inventory: [],
+        equipment: { Weapon: null, Armor: null, Accessory: null },
+        currentActivity: 'Guarding',
+    };
 }
 
 function placeFactions(world: TileData[][], factions: Record<string, FactionState>): number {
     const factionIds = Object.keys(factions);
     let unitIdCounter = 0;
-    const MIN_FACTION_DISTANCE = 20; // Increased distance for larger settlements
-    const placedFactionCoords: {x: number, y: number}[] = [];
-    const settlementDef = INFRASTRUCTURE_MAP.get('settlement_hamlet') as Infrastructure;
-    const settlementSize = settlementDef.multiTile || { width: 1, height: 1 };
+    const SETTLEMENT_RADIUS = 5;
+    const numFactions = factionIds.length;
+    const center = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
+    const radius = Math.min(center.x, center.y) - 5;
+    const startingPoints = factionIds.map((_, index) => {
+        const angle = (2 * Math.PI / numFactions) * index;
+        return { x: Math.round(center.x + radius * Math.cos(angle)), y: Math.round(center.y + radius * Math.sin(angle)) };
+    });
 
-    for(const factionId of factionIds) {
+    factionIds.forEach((factionId, index) => {
         const factionInfo = FACTIONS_MAP.get(factionId);
-        if (!factionInfo) continue;
+        if (!factionInfo) return;
+        let placed = false; let attempts = 0;
+        const startX = startingPoints[index].x;
+        const startY = startingPoints[index].y;
+        let searchRadius = 0;
+        while (!placed && attempts < 500) {
+            let foundSpot = false;
+            for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+                for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                    if (searchRadius > 0 && Math.abs(dx) < searchRadius && Math.abs(dy) < searchRadius) continue;
+                    const x = startX + dx;
+                    const y = startY + dy;
+                    if (x < 1 || x >= WORLD_SIZE - 1 || y < 1 || y >= WORLD_SIZE - 1) continue;
+                    const rootTile = world[y][x];
+                    const isPreferredBiome = factionInfo.preferredBiomes.length === 0 || factionInfo.preferredBiomes.includes(rootTile.biomeId);
+                    const areaIsEmpty = [world[y][x], world[y+1][x], world[y][x+1], world[y+1][x+1]].every(t => !t.ownerFactionId && !t.infrastructureId && !t.worldEventId && !t.resourceId && !t.partOfInfrastructure);
+                    if (isPreferredBiome && areaIsEmpty) {
+                        const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet')!;
+                        const maxHp = (Object.values(hamletDef.upgradeCost!).reduce((s, a) => s + a, 0)) * INFRA_HP_COST_MULTIPLIER;
+                        
+                        rootTile.ownerFactionId = factionId;
+                        rootTile.infrastructureId = 'settlement_hamlet';
+                        rootTile.hp = maxHp;
+                        rootTile.maxHp = maxHp;
 
-        let placed = false;
-        let attempts = 0;
-        while(!placed && attempts < 2000) {
-            const x = getRandomInt(0, WORLD_SIZE - settlementSize.width);
-            const y = getRandomInt(0, WORLD_SIZE - settlementSize.height);
-            
-            // Check 1: Valid Biome and if the entire 2x2 area is empty
-            const rootTileBiome = world[y][x].biomeId;
-            const isPreferredBiome = factionInfo.preferredBiomes.length === 0 || factionInfo.preferredBiomes.includes(rootTileBiome);
-            
-            let areaIsClear = true;
-            for (let dy = 0; dy < settlementSize.height; dy++) {
-                for (let dx = 0; dx < settlementSize.width; dx++) {
-                    const tile = world[y + dy][x + dx];
-                    if (tile.ownerFactionId || tile.infrastructureId || tile.worldEventId || tile.resourceId) {
-                        areaIsClear = false;
-                        break;
-                    }
-                }
-                if (!areaIsClear) break;
-            }
-
-            if (isPreferredBiome && areaIsClear) {
-                // Check 2: Distance from other factions
-                let isFarEnough = true;
-                for (const coord of placedFactionCoords) {
-                    // Check distance from all 4 corners of the new settlement to be safe
-                    const distance = Math.hypot(x - coord.x, y - coord.y);
-                    if (distance < MIN_FACTION_DISTANCE) {
-                        isFarEnough = false;
-                        break;
-                    }
-                }
-
-                if (isFarEnough) {
-                    // Place multi-tile settlement
-                    const rootX = x;
-                    const rootY = y;
-                    
-                    for (let dy = 0; dy < settlementSize.height; dy++) {
-                        for (let dx = 0; dx < settlementSize.width; dx++) {
-                            const currentTile = world[y + dy][x + dx];
-                            currentTile.ownerFactionId = factionId;
-                            if (dx === 0 && dy === 0) { // This is the root tile
-                                currentTile.infrastructureId = settlementDef.id;
-                            } else {
-                                currentTile.partOfInfrastructure = { rootX, rootY };
+                        world[y+1][x].partOfInfrastructure = { rootX: x, rootY: y };
+                        world[y][x+1].partOfInfrastructure = { rootX: x, rootY: y };
+                        world[y+1][x+1].partOfInfrastructure = { rootX: x, rootY: y };
+                        
+                        const nativeBiome = factionInfo.preferredBiomes[0] || BIOMES[1].id;
+                        for (let ddy = -SETTLEMENT_RADIUS; ddy <= SETTLEMENT_RADIUS; ddy++) {
+                            for (let ddx = -SETTLEMENT_RADIUS; ddx <= SETTLEMENT_RADIUS; ddx++) {
+                                const nx = x + ddx; const ny = y + ddy;
+                                if (Math.hypot(ddx, ddy) <= SETTLEMENT_RADIUS && nx >= 0 && nx < WORLD_SIZE && ny >= 0 && ny < WORLD_SIZE) {
+                                    world[ny][nx].biomeId = nativeBiome;
+                                }
                             }
                         }
-                    }
-                    
-                    const rootTile = world[rootY][rootX];
-
-                    // Add starting units to the root tile
-                    const workerUnitDef = UNITS.find(u => u.factionId === factionId && u.role === 'Worker' && u.tier === 1);
-                    if (workerUnitDef) {
-                        for (let i = 0; i < 2; i++) {
-                            rootTile.units.push({
-                                id: unitIdCounter++,
-                                unitId: workerUnitDef.id,
-                                factionId: factionId,
-                                hp: getInitialHp(workerUnitDef, factionInfo),
-                                x: rootX,
-                                y: rootY,
-                                killCount: 0,
-                                combatLog: [],
-                            });
+                        const workerDef = UNITS.find(u => u.factionId === factionId && u.role === 'Worker');
+                        if (workerDef) {
+                            rootTile.units.push(createUnit(unitIdCounter++, workerDef, factionInfo, x, y));
+                            rootTile.units.push(createUnit(unitIdCounter++, workerDef, factionInfo, x, y));
                         }
+                        const skirmisherDef = UNITS.find(u => u.factionId === factionId && u.role === 'Skirmisher' && u.tier === 1);
+                        if (skirmisherDef) {
+                            rootTile.units.push(createUnit(unitIdCounter++, skirmisherDef, factionInfo, x, y));
+                        }
+                        placed = true; foundSpot = true;
+                        break;
                     }
-
-                    const skirmisherUnitDef = UNITS.find(u => u.factionId === factionId && u.role === 'Skirmisher' && u.tier === 1);
-                    if (skirmisherUnitDef) {
-                         rootTile.units.push({
-                            id: unitIdCounter++,
-                            unitId: skirmisherUnitDef.id,
-                            factionId: factionId,
-                            hp: getInitialHp(skirmisherUnitDef, factionInfo),
-                            x: rootX,
-                            y: rootY,
-                            killCount: 0,
-                            combatLog: [],
-                        });
-                    }
-
-                    placedFactionCoords.push({x: rootX, y: rootY});
-                    placed = true;
                 }
+                if (foundSpot) break;
             }
+            searchRadius++;
             attempts++;
         }
-        if (!placed) {
-            console.warn(`Could not place faction ${factionInfo.name} after ${attempts} attempts.`);
-        }
-    }
+        if (!placed) console.error(`CRITICAL: Could not place faction ${factionInfo.name}.`);
+    });
     return unitIdCounter;
 }
-
 
 export function generateInitialGameState(): GameState {
   const world = createEmptyWorld();
   placeBiomes(world);
-  placeResources(world);
-  placeWorldEvents(world);
-
   const factionStates: Record<string, FactionState> = {};
   const mainFactions = FACTIONS.filter(f => f.id !== 'neutral_hostile');
-  
-  const startingResources = { iron_ore: 10, steamwood_log: 10 };
-
+  const startingResources = { iron_ore: 50, steamwood_log: 50 };
   mainFactions.forEach((faction, index) => {
-    const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = {
-        Raw: { current: 0, capacity: 0 },
-        Processed: { current: 0, capacity: 0 },
-        Component: { current: 0, capacity: 0 },
-        Exotic: { current: 0, capacity: 0 },
-    };
-
-    // Add capacity from starting Hamlet
+    const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = { Raw: { current: 0, capacity: 0 }, Processed: { current: 0, capacity: 0 }, Component: { current: 0, capacity: 0 }, Exotic: { current: 0, capacity: 0 }, };
     const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet');
     if (hamletDef?.addsStorage) {
         for (const [tier, amount] of Object.entries(hamletDef.addsStorage)) {
             initialStorage[tier as ResourceTier].capacity = amount;
         }
     }
-
-    // Calculate initial resource usage
     for (const [resId, amount] of Object.entries(startingResources)) {
         const resDef = RESOURCES_MAP.get(resId);
-        if (resDef) {
-            initialStorage[resDef.tier].current += amount;
-        }
+        if (resDef) initialStorage[resDef.tier].current += amount;
     }
-
-    factionStates[faction.id] = {
-      id: faction.id,
-      resources: startingResources,
-      storage: initialStorage,
-      leader: CHARACTERS[index % CHARACTERS.length], // Assign leaders cyclically
-      researchPoints: 0,
-      unlockedTechs: [],
-      athar: 100,
-      population: 10, // Starting population is smaller
-      leaderStatus: 'settled',
-      diplomacy: {},
-    };
+    factionStates[faction.id] = { id: faction.id, resources: startingResources, storage: initialStorage, leader: CHARACTERS[index % CHARACTERS.length], researchPoints: 0, unlockedTechs: [], athar: 100, population: 10, leaderStatus: 'settled', diplomacy: {}, isEliminated: false };
   });
-
-  // Initialize diplomatic relations
+  const nextUnitId = placeFactions(world, factionStates);
+  placeResources(world);
+  placeWorldEvents(world);
   const factionIds = Object.keys(factionStates);
-  for (const factionAId of factionIds) {
-    for (const factionBId of factionIds) {
-      if (factionAId !== factionBId) {
-        factionStates[factionAId].diplomacy[factionBId] = {
-          status: 'Neutral',
-          opinion: 0,
-        };
-      }
+  for (const fA of factionIds) {
+    for (const fB of factionIds) {
+      if (fA !== fB) factionStates[fA].diplomacy[fB] = { status: 'Neutral', opinion: 0 };
     }
   }
-  
-  const nextUnitId = placeFactions(world, factionStates);
-
-  return {
-    world,
-    factions: factionStates,
-    gameTime: {
-      tick: 0,
-      year: STARTING_YEAR,
-      epoch: 'era_of_awakening',
-    },
-    selectedTile: null,
-    selectedUnitId: null,
-    nextUnitId,
-    attackFlashes: {},
-    dyingUnits: [],
-    eventLog: [],
-    nextEventId: 0,
-    totalMintedAthar: 10,
-  };
+  return { world, factions: factionStates, gameTime: { tick: 0, year: STARTING_YEAR, epoch: 'era_of_awakening' }, selectedTile: null, selectedUnitId: null, nextUnitId, attackFlashes: {}, dyingUnits: [], eventLog: [], nextEventId: 0, totalMintedAthar: 0 };
 }

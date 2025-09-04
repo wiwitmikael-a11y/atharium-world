@@ -109,6 +109,30 @@ export interface Resource {
   biomes?: string[];
   assetId: string;
   rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
+  respawnTime?: number; // In ticks. Undefined means it does not respawn.
+}
+
+export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+export type EquipmentSlot = 'Weapon' | 'Armor' | 'Accessory' | 'None';
+export type StatEffect = 
+  | 'HP_FLAT' | 'HP_PERCENT' 
+  | 'ATTACK_FLAT' | 'ATTACK_PERCENT'
+  | 'DEFENSE_FLAT' | 'DEFENSE_PERCENT'
+  | 'BONUS_DMG_VS_INFANTRY' | 'BONUS_DMG_VS_SKIRMISHER' | 'BONUS_DMG_VS_SIEGE'
+  | 'FIRST_STRIKE_CHANCE' | 'HP_REGEN';
+
+export interface ItemEffect {
+    type: StatEffect;
+    value: number;
+}
+
+export interface ItemDefinition {
+    id: string;
+    name: string;
+    description: string;
+    rarity: Rarity;
+    slot: EquipmentSlot;
+    effects: ItemEffect[];
 }
 
 export interface UnitDefinition {
@@ -117,6 +141,7 @@ export interface UnitDefinition {
   factionId: string;
   hp: number;
   atk: number;
+  defense: number;
   role: 'Worker' | 'Infantry' | 'Skirmisher' | 'Siege' | 'Support' | 'Hero';
   assetId: string;
   cost: Record<string, number>;
@@ -141,9 +166,19 @@ export interface UnitInstance {
   hp: number;
   x: number;
   y: number;
+  level: number;
+  xp: number;
   killCount: number;
-  adventureTicks?: number; // For leader adventures
+  adventureTicks?: number;
+  buildTicks?: number;
   combatLog: CombatLogEntry[];
+  inventory: ItemDefinition[];
+  equipment: {
+    Weapon: ItemDefinition | null;
+    Armor: ItemDefinition | null;
+    Accessory: ItemDefinition | null;
+  };
+  currentActivity: string;
 }
 
 export interface Infrastructure {
@@ -162,6 +197,7 @@ export interface Infrastructure {
   multiTile?: { width: number; height: number };
   addsStorage?: Partial<Record<ResourceTier, number>>;
   generatesResearchPoints?: number;
+  xpGain?: number;
 }
 
 export interface WorldEvent {
@@ -182,11 +218,27 @@ export interface TileData {
   units: UnitInstance[];
   worldEventId?: string;
   partOfInfrastructure?: { rootX: number, rootY: number };
+  resourceCooldown?: number; // Tick when this tile can respawn a resource.
+  loot?: ItemDefinition[];
+  hp?: number;
+  maxHp?: number;
+  resourceCache?: Record<string, number>;
+}
+
+export enum GameEventType {
+    BATTLE,
+    LOOT,
+    UPGRADE,
+    LEVEL_MILESTONE,
+    FACTION_ELIMINATED,
+    WAR_DECLARED,
+    ALLIANCE_FORMED,
 }
 
 export interface GameEvent {
     id: number;
     tick: number;
+    type: GameEventType;
     message: string;
     location: { x: number, y: number };
 }
@@ -232,6 +284,7 @@ export interface FactionState {
   population: number;
   leaderStatus: 'settled' | 'adventuring';
   diplomacy: Record<string, DiplomaticRelation>;
+  isEliminated: boolean;
 }
 
 export interface TechNode {

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import Icon from './Icon';
 
@@ -33,10 +34,10 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isFirstTime = false }) =
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 pop-in">
       <div 
         ref={modalRef}
-        className="bg-gray-900/70 backdrop-blur-md border-2 border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-400/20 text-gray-200 w-full max-w-3xl max-h-[80vh] flex flex-col"
+        className="bg-gray-900/70 backdrop-blur-md border-2 border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-400/20 text-gray-200 w-full max-w-4xl max-h-[90vh] flex flex-col"
       >
         <header className="flex items-center justify-between p-4 border-b border-cyan-500/30">
-          <h2 className="text-2xl font-cinzel text-cyan-300">Help & Instructions</h2>
+          <h2 className="text-2xl font-cinzel text-cyan-300">Welcome to the World of Atharium</h2>
           <button 
             onClick={onClose} 
             className={`p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors ${isFirstTime ? 'selection-glow' : ''}`}
@@ -47,39 +48,56 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose, isFirstTime = false }) =
             </svg>
           </button>
         </header>
-        <main className="p-6 overflow-y-auto space-y-6">
+        <main className="p-6 overflow-y-auto space-y-6 text-gray-300">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section>
+              <h3 className="text-xl font-bold text-cyan-400 mb-3">Controls</h3>
+              <ul className="space-y-2 list-disc list-inside">
+                <li><strong className="font-semibold text-white">Pan Map:</strong> Use <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">W/A/S/D</kbd>, or click and drag.</li>
+                <li><strong className="font-semibold text-white">Zoom Map:</strong> Use the mouse scroll wheel or pinch to zoom.</li>
+                <li><strong className="font-semibold text-white">Inspect:</strong> Click any tile to see details in the sidebar.</li>
+                <li><strong className="font-semibold text-white">Follow Unit:</strong> Select a unit to follow it. Panning manually will disable follow.</li>
+                <li><strong className="font-semibold text-white">Event Log:</strong> Click any event in the bottom ticker to jump to its location.</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-xl font-bold text-cyan-400 mb-3">Core Concepts</h3>
+              <ul className="space-y-2 list-disc list-inside">
+                <li><strong className="font-semibold text-white">$ATHAR Minted:</strong> A global score tracking the world's progress. It rises as factions refine <strong className="text-purple-300">Chrono-Crystals</strong>.</li>
+                <li><strong className="font-semibold text-white">Settlements:</strong> The heart of an empire. These 2x2 structures increase population capacity and resource storage. They can be upgraded into mighty, culture-specific cities.</li>
+                <li><strong className="font-semibold text-white">Economy:</strong> Factions must build a full production chain: harvest <strong className="text-yellow-400">Raw</strong> resources, refine them into <strong className="text-blue-300">Processed</strong> goods, and craft those into <strong className="text-green-300">Components</strong> for advanced units and buildings.</li>
+              </ul>
+            </section>
+          </div>
+
           <section>
-            <h3 className="text-xl font-bold text-cyan-400 mb-3">Controls</h3>
-            <ul className="space-y-2 list-disc list-inside">
-              <li><strong className="font-semibold">Pan Map:</strong> Use <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">W</kbd> <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">A</kbd> <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">S</kbd> <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">D</kbd> keys, or click and drag with the mouse. On touch devices, drag with one finger.</li>
-              <li><strong className="font-semibold">Zoom Map:</strong> Use the mouse scroll wheel. On touch devices, use a two-finger pinch gesture.</li>
-              <li><strong className="font-semibold">Inspect:</strong> Click on any tile to view its details in the sidebar.</li>
-              <li><strong className="font-semibold">Game Speed:</strong> Use the speed controls in the top right to pause, or play at 1x, 2x, or 4x speed.</li>
-            </ul>
+            <h3 className="text-xl font-bold text-cyan-400 mb-3">Units & Combat</h3>
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h4 className="font-semibold text-lg text-white mb-1">Progression: XP & Leveling</h4>
+                <p>Units gain XP by performing actions: workers from building, combat units from fighting. When a unit levels up, its HP and Attack increase, and it is fully healed. Watch for level-up announcements in the event log!</p>
+              </div>
+              <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h4 className="font-semibold text-lg text-white mb-1">Equipment & Loot</h4>
+                <p className="mb-2">Units have three equipment slots: <strong className="text-white">Weapon</strong>, <strong className="text-white">Armor</strong>, and <strong className="text-white">Accessory</strong>. Gear provides powerful stat bonuses and comes in 5 rarities, shown by color:</p>
+                <div className="flex space-x-4 text-sm mb-2">
+                    <span className="text-gray-300">Common</span>
+                    <span className="text-green-400">Uncommon</span>
+                    <span className="text-blue-400">Rare</span>
+                    <span className="text-purple-500">Epic</span>
+                    <span className="text-orange-400">Legendary</span>
+                </div>
+                <p>When a unit is defeated, it drops a <strong className="text-yellow-300">Loot Container</strong> on the map containing its items. Any unit can move onto the tile to claim the gear for their faction. The AI will automatically equip the best items.</p>
+              </div>
+               <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h4 className="font-semibold text-lg text-white mb-1">Infrastructure Combat</h4>
+                <p>Buildings are no longer safe! Enemy units can attack and destroy your infrastructure. When a building is destroyed, it drops a <strong className="text-yellow-300">Loot Container</strong> with a portion of its construction resources, which can be claimed by any faction.</p>
+              </div>
+            </div>
           </section>
-          <section>
-            <h3 className="text-xl font-bold text-cyan-400 mb-3">Gameplay Tips</h3>
-            <ul className="space-y-3 list-disc list-inside">
-                <li>
-                    <strong className="font-semibold">$ATHAR Minted - A Global Metric:</strong> The bar at the top of the screen tracks `$ATHAR Minted`, a measure of the world's collective technological and magical advancement. It increases when any faction refines <strong className="text-purple-300">Raw Chrono-Crystals</strong>. Higher levels may trigger world-changing events.
-                </li>
-                <li>
-                    <strong className="font-semibold">Faction Athar:</strong> Each faction also has its own <strong className="text-yellow-400">Athar</strong> score, generated passively from its population. This represents the faction's influence and power. The faction with the highest Athar is shown in the header.
-                </li>
-                <li>
-                    <strong className="font-semibold">Factions & Biomes:</strong> Each faction has unique traits and prefers certain biomes. Units fighting in favorable terrain gain significant combat bonuses. Check the "Terrain Effects" in the sidebar when selecting a tile.
-                </li>
-                <li>
-                    <strong className="font-semibold">Resources are Key:</strong> Expand your territory to claim resource deposits. Build extractors on them, then construct buildings like Forges to process raw materials into advanced components needed for powerful units and infrastructure.
-                </li>
-                <li>
-                    <strong className="font-semibold">Diplomacy Matters:</strong> Factions will form alliances and declare war based on their personality traits and their opinion of each other. A powerful military might deter aggressors, while friendly relations can secure a valuable ally.
-                </li>
-                 <li>
-                    <strong className="font-semibold">Saving Your Simulation:</strong> You can save the current state of the world via the <strong className="font-semibold">Settings</strong> menu (<Icon name="crystal" className="w-4 h-4 inline-block -mt-1" /> icon). When you log in next time, you'll have the option to load this saved state.
-                </li>
-            </ul>
-          </section>
+
         </main>
       </div>
     </div>

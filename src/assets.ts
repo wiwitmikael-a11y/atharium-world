@@ -1,3 +1,4 @@
+
 const GITHUB_ASSET_BASE_URL = 'https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/';
 const GITHUB_MEDIA_BASE_URL = 'https://cdn.jsdelivr.net/gh/wiwitmikael-a11y/atharium-assets@main/';
 
@@ -11,20 +12,21 @@ export const ASSET_PATHS: Record<string, string> = {
   'ui_menu_background_video': getMediaUrl('menu_background.mp4'),
   'ui_title_logo': getAssetUrl('ui_title_logo'),
 
-  // Terrain Textures (High Quality)
-  'terrain_base': getAssetUrl('terrain_earth_cracked'), // Fallback texture
-  'terrain_gloomwell': getAssetUrl('terrain_forest_dark'),
-  'terrain_verdant': getAssetUrl('terrain_grass_lush'),
-  'terrain_wasteland': getAssetUrl('terrain_earth_cracked'),
-  'terrain_tundra': getAssetUrl('terrain_snow_rocky'),
-  'terrain_ashlands': getAssetUrl('terrain_volcanic_ash'),
-  'terrain_atharium_wastes': getAssetUrl('terrain_crystal_purple'),
+  // Terrain Textures (Seamless Top-Down)
+  'terrain_base': getAssetUrl('terrain_wasteland'), // Fallback texture
+  'terrain_gloomwell': getAssetUrl('terrain_gloomwell'),
+  'terrain_verdant': getAssetUrl('terrain_verdant'),
+  'terrain_wasteland': getAssetUrl('terrain_wasteland'),
+  'terrain_tundra': getAssetUrl('terrain_tundra'),
+  'terrain_ashlands': getAssetUrl('terrain_ashlands'),
+  'terrain_atharium_wastes': getAssetUrl('terrain_atharium_wastes'),
   'terrain_fluxcorrupted': getAssetUrl('terrain_fluxcorrupted'),
   'terrain_sableglass': getAssetUrl('terrain_sableglass'),
   'terrain_skyclave': getAssetUrl('terrain_skyclave'),
   
   // UI & Overlays
   'faction_overlay': getAssetUrl('faction_overlay'),
+  'asset_loot_container': getAssetUrl('lootbox'),
 
   // World Events
   'discovery_fallen_airship': getAssetUrl('discovery_fallen_airship'),

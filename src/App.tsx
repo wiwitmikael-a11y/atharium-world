@@ -9,7 +9,7 @@ import GameMap from './components/GameMap';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import EventTicker from './components/EventTicker';
-import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE } from './constants';
+import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE, FACTIONS_MAP, FACTION_COLOR_HEX_MAP, FACTION_COLOR_RGB_MAP } from './constants';
 import IntroVideo from './components/IntroVideo';
 import StartMenu from './components/StartMenu';
 import LoginScreen from './components/LoginScreen';
@@ -203,6 +203,43 @@ const App: React.FC = () => {
           setGamePhase('playing');
       }
   }, [isGameLoading, gamePhase]);
+
+  // Effect to set the dynamic faction color for UI elements
+  useEffect(() => {
+    const root = document.documentElement;
+    let factionId: string | undefined;
+
+    if (gameState) {
+      if (gameState.selectedUnitId) {
+        const unit = gameState.world.flat().flatMap(t => t.units).find(u => u.id === gameState.selectedUnitId);
+        if (unit) {
+          factionId = unit.factionId;
+        }
+      } else if (gameState.selectedTile) {
+        const tile = gameState.world[gameState.selectedTile.y][gameState.selectedTile.x];
+        if (tile) {
+            if (tile.partOfInfrastructure) {
+                const rootTile = gameState.world[tile.partOfInfrastructure.rootY][tile.partOfInfrastructure.rootX];
+                factionId = rootTile.ownerFactionId;
+            } else {
+                factionId = tile.ownerFactionId;
+            }
+        }
+      }
+    }
+
+    const faction = factionId ? FACTIONS_MAP.get(factionId) : null;
+    if (faction?.color) {
+      const hex = FACTION_COLOR_HEX_MAP[faction.color] || '#06b6d4';
+      const rgb = FACTION_COLOR_RGB_MAP[faction.color] || '6, 182, 212';
+      root.style.setProperty('--selection-glow-hex', hex);
+      root.style.setProperty('--selection-glow-rgb', rgb);
+    } else {
+      // Reset to default cyan if no faction is selected or it has no color
+      root.style.setProperty('--selection-glow-hex', '#06b6d4');
+      root.style.setProperty('--selection-glow-rgb', '6, 182, 212');
+    }
+  }, [gameState?.selectedTile, gameState?.selectedUnitId, gameState?.world]);
 
   // Effect for smooth camera follow
   useEffect(() => {

@@ -66,7 +66,7 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
 
     // Convert world coordinates to tile indices
     const tileCorners = corners.map(corner => ({
-      x: (corner.y / TILE_VISUAL_HEIGHT) + (corner.x / TILE_WIDTH),
+      x: (corner.x / TILE_WIDTH) + (corner.y / TILE_VISUAL_HEIGHT),
       y: (corner.y / TILE_VISUAL_HEIGHT) - (corner.x / TILE_WIDTH)
     }));
     
@@ -80,7 +80,7 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
     const tilesToRender = [];
     for (let y = minY; y <= maxY; y++) {
       for (let x = minX; x <= maxX; x++) {
-        const tile = world[y][x];
+        const tile = world[y]?.[x];
         if (tile) {
             tilesToRender.push(tile);
         }
