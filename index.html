@@ -12,6 +12,14 @@
       :root {
         --selection-glow-hex: #06b6d4; /* Default: cyan-500 */
         --selection-glow-rgb: 6, 182, 212;
+        --cursor-default: url(https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/ui_cursor_default.png);
+        --cursor-pointer: url(https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/ui_cursor_pointer.png);
+        --cursor-grabbing: url(https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/ui_cursor_grabbing.png);
+      }
+
+      /* Universal selector to enforce custom cursor on all elements, including scrollbars */
+      * {
+        cursor: var(--cursor-default), auto !important;
       }
 
       body {
@@ -25,6 +33,17 @@
       h1, h2, h3, h4, h5, h6 {
         font-family: 'Cinzel', serif;
       }
+      
+      /* Default state for interactive elements & map */
+      button, a, [role="button"], input[type="submit"], input[type="button"], .cursor-pointer, .cursor-grab {
+          cursor: var(--cursor-pointer), pointer !important;
+      }
+
+      /* When body has .panning-active, override ALL cursors to grabbing */
+      body.panning-active, body.panning-active * {
+        cursor: var(--cursor-grabbing), grabbing !important;
+      }
+      
       @keyframes pulse {
         0%, 100% {
           transform: scale(1);

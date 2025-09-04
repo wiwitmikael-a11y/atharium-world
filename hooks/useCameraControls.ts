@@ -86,7 +86,8 @@ export const useCameraControls = (
     const handlePointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       activePointersRef.current.set(e.pointerId, e);
-      container.style.cursor = 'grabbing';
+      container.classList.remove('cursor-grab');
+      container.classList.add('cursor-grabbing');
       if (activePointersRef.current.size === 2) {
           lastPinchDistRef.current = getDistance(activePointersRef.current);
       }
@@ -124,7 +125,8 @@ export const useCameraControls = (
           lastPinchDistRef.current = 0;
       }
       if (activePointersRef.current.size === 0) {
-          container.style.cursor = 'grab';
+          container.classList.remove('cursor-grabbing');
+          container.classList.add('cursor-grab');
       }
     };
 
@@ -134,7 +136,7 @@ export const useCameraControls = (
       setCamera(prev => ({ ...prev, zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom * zoomFactor)) }));
     };
 
-    container.style.cursor = 'grab';
+    container.classList.add('cursor-grab');
     container.addEventListener('pointerdown', handlePointerDown);
     container.addEventListener('pointermove', handlePointerMove);
     container.addEventListener('pointerup', handlePointerUp);
@@ -143,6 +145,7 @@ export const useCameraControls = (
     container.addEventListener('wheel', handleWheel, { passive: false });
 
     return () => {
+      container.classList.remove('cursor-grab', 'cursor-grabbing');
       container.removeEventListener('pointerdown', handlePointerDown);
       container.removeEventListener('pointermove', handlePointerMove);
       container.removeEventListener('pointerup', handlePointerUp);

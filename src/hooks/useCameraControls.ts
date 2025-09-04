@@ -15,7 +15,7 @@ export const useCameraControls = (
   const keysPressedRef = useRef<Set<string>>(new Set());
   const animationFrameRef = useRef<number | undefined>(undefined);
 
-  // Refs untuk kontrol sentuh
+  // Refs for touch controls
   const activePointersRef = useRef(new Map<number, PointerEvent>());
   const lastPinchDistRef = useRef(0);
 
@@ -23,7 +23,7 @@ export const useCameraControls = (
     setCamera((prev) => ({ ...prev, pan: { x: prev.pan.x + dx, y: prev.pan.y + dy } }));
   }, [setCamera]);
 
-  // Game loop untuk keyboard panning
+  // Game loop for keyboard panning
   useEffect(() => {
     if (!isInitialized) return; // Don't attach keyboard listeners until game is ready
 
@@ -39,7 +39,6 @@ export const useCameraControls = (
       let dy = 0;
       const effectivePanSpeed = PAN_SPEED / zoom;
 
-      // Arah pan dinormalkan (tidak terbalik)
       if (keysPressedRef.current.has('w')) { dy += effectivePanSpeed; }
       if (keysPressedRef.current.has('s')) { dy -= effectivePanSpeed; }
       if (keysPressedRef.current.has('a')) { dx += effectivePanSpeed; }
@@ -63,12 +62,12 @@ export const useCameraControls = (
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [pan, zoom, setIsFollowing, isInitialized]); // Re-run if initialized changes
+  }, [pan, zoom, setIsFollowing, isInitialized]);
 
-  // Event listeners untuk mouse dan touch
+  // Event listeners for mouse and touch
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !isInitialized) return; // Don't attach listeners until ready
+    if (!container || !isInitialized) return;
 
     const getDistance = (pointers: Map<number, PointerEvent>): number => {
         const [p1, p2] = Array.from(pointers.values());
@@ -78,7 +77,7 @@ export const useCameraControls = (
     const handlePointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       activePointersRef.current.set(e.pointerId, e);
-      container.style.cursor = 'grabbing';
+      document.body.classList.add('panning-active');
       if (activePointersRef.current.size === 2) {
           lastPinchDistRef.current = getDistance(activePointersRef.current);
       }
@@ -93,19 +92,17 @@ export const useCameraControls = (
       
       activePointersRef.current.set(e.pointerId, e);
 
-      if (activePointersRef.current.size === 1) { // Panning 1 jari/mouse
+      if (activePointersRef.current.size === 1) { // Panning
           const dx = e.movementX / zoom;
           const dy = e.movementY / zoom;
           pan(dx, dy);
-      } else if (activePointersRef.current.size === 2) { // Pinch-zoom & pan 2 jari
-          e.preventDefault(); // Mencegah zoom/scroll default browser
+      } else if (activePointersRef.current.size === 2) { // Pinch-zoom
+          e.preventDefault();
           const newDist = getDistance(activePointersRef.current);
-          
           if (lastPinchDistRef.current > 0) {
               const zoomFactor = newDist / lastPinchDistRef.current;
                setCamera(prev => ({ ...prev, zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom * zoomFactor)) }));
           }
-
           lastPinchDistRef.current = newDist;
       }
     };
@@ -116,7 +113,7 @@ export const useCameraControls = (
           lastPinchDistRef.current = 0;
       }
       if (activePointersRef.current.size === 0) {
-          container.style.cursor = 'grab';
+          document.body.classList.remove('panning-active');
       }
     };
 
@@ -126,7 +123,7 @@ export const useCameraControls = (
       setCamera(prev => ({ ...prev, zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom * zoomFactor)) }));
     };
 
-    container.style.cursor = 'grab';
+    container.classList.add('cursor-grab');
     container.addEventListener('pointerdown', handlePointerDown);
     container.addEventListener('pointermove', handlePointerMove);
     container.addEventListener('pointerup', handlePointerUp);
@@ -135,6 +132,8 @@ export const useCameraControls = (
     container.addEventListener('wheel', handleWheel, { passive: false });
 
     return () => {
+      document.body.classList.remove('panning-active'); // Cleanup body class
+      container.classList.remove('cursor-grab');
       container.removeEventListener('pointerdown', handlePointerDown);
       container.removeEventListener('pointermove', handlePointerMove);
       container.removeEventListener('pointerup', handlePointerUp);
@@ -142,7 +141,7 @@ export const useCameraControls = (
       container.removeEventListener('pointerleave', handlePointerUp);
       container.removeEventListener('wheel', handleWheel);
     };
-  }, [zoom, setCamera, pan, setIsFollowing, isInitialized]); // Re-run if initialized changes
+  }, [zoom, setCamera, pan, setIsFollowing, isInitialized]);
 
   return containerRef;
 };

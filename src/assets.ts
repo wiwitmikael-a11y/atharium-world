@@ -1,4 +1,5 @@
 
+
 const GITHUB_ASSET_BASE_URL = 'https://raw.githubusercontent.com/wiwitmikael-a11y/atharium-assets/main/';
 const GITHUB_MEDIA_BASE_URL = 'https://cdn.jsdelivr.net/gh/wiwitmikael-a11y/atharium-assets@main/';
 
@@ -27,6 +28,11 @@ export const ASSET_PATHS: Record<string, string> = {
   // UI & Overlays
   'faction_overlay': getAssetUrl('faction_overlay'),
   'asset_loot_container': getAssetUrl('lootbox'),
+  
+  // UI Cursors
+  'ui_cursor_default': getAssetUrl('ui_cursor_default'),
+  'ui_cursor_pointer': getAssetUrl('ui_cursor_pointer'),
+  'ui_cursor_grabbing': getAssetUrl('ui_cursor_grabbing'),
 
   // World Events
   'discovery_fallen_airship': getAssetUrl('discovery_fallen_airship'),
