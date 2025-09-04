@@ -4,6 +4,7 @@ import { EPOCHS, TICK_PER_YEAR, STARTING_YEAR } from '../constants';
 import Icon from './Icon';
 import SettingsMenu from './SettingsMenu';
 import InfoTooltip from './InfoTooltip';
+import FactionsListDialog from './FactionsListDialog';
 
 interface HeaderProps {
   gameState: GameState;
@@ -14,6 +15,7 @@ interface HeaderProps {
   onExitToMenu: () => void;
   onSaveGame: () => void;
   onToggleHelp: () => void;
+  onSelectFaction: (factionId: string) => void;
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -26,13 +28,15 @@ const formatMintedAthar = (num: number) => {
     }).format(num);
 }
 
-const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu, onSaveGame, onToggleHelp }) => {
+const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, soundManager, onResetWorld, onExitToMenu, onSaveGame, onToggleHelp, onSelectFaction }) => {
   const { gameTime, totalMintedAthar } = gameState;
   const epochInfo = EPOCHS.find(e => e.id === gameTime.epoch);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFactionsListOpen, setIsFactionsListOpen] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   const settingsRef = useRef<HTMLDivElement>(null);
+  const factionsButtonRef = useRef<HTMLDivElement>(null);
   const timeRef = useRef<HTMLDivElement>(null);
   const epochRef = useRef<HTMLDivElement>(null);
   const atharMintedRef = useRef<HTMLDivElement>(null);
@@ -59,14 +63,17 @@ const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, sound
         if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
             setIsSettingsOpen(false);
         }
+        if (factionsButtonRef.current && !factionsButtonRef.current.contains(event.target as Node)) {
+            setIsFactionsListOpen(false);
+        }
     };
-    if (isSettingsOpen) {
+    if (isSettingsOpen || isFactionsListOpen) {
         document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
         document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSettingsOpen]);
+  }, [isSettingsOpen, isFactionsListOpen]);
   
   return (
     <>
@@ -122,13 +129,36 @@ const Header: React.FC<HeaderProps> = ({ gameState, gameSpeed, onSetSpeed, sound
                       <span className="text-lg">{epochInfo?.name || 'Unknown Epoch'}</span>
                   </div>
               </div>
-              <div ref={atharMintedRef} onClick={() => setActiveTooltip(activeTooltip === 'athar' ? null : 'athar')} className="hidden lg:flex items-center space-x-3 w-64 cursor-pointer" title="$ATHAR Minted">
-                    <span className="text-sm font-semibold text-red-400">$ATHAR Minted</span>
-                    <div className="w-full bg-gray-700 rounded-full h-2.5">
-                        <div className="bg-red-500 h-2.5 rounded-full" style={{ width: `${atharProgress}%` }}></div>
-                    </div>
-                    <span className="font-mono text-lg font-bold">{formatMintedAthar(totalMintedAthar)}</span>
-                </div>
+              <div className="hidden lg:flex items-center space-x-2">
+                <div ref={atharMintedRef} onClick={() => setActiveTooltip(activeTooltip === 'athar' ? null : 'athar')} className="flex items-center space-x-3 w-64 cursor-pointer" title="$ATHAR Minted">
+                      <span className="text-sm font-semibold text-red-400">$ATHAR Minted</span>
+                      <div className="w-full bg-gray-700 rounded-full h-2.5">
+                          <div className="bg-red-500 h-2.5 rounded-full" style={{ width: `${atharProgress}%` }}></div>
+                      </div>
+                      <span className="font-mono text-lg font-bold">{formatMintedAthar(totalMintedAthar)}</span>
+                  </div>
+
+                  <div ref={factionsButtonRef} className="relative">
+                    <button
+                      onClick={() => setIsFactionsListOpen(p => !p)}
+                      className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                      aria-label="View Factions"
+                    >
+                      <Icon name="flag" className="w-5 h-5 text-cyan-400" />
+                      <span className="font-semibold">Factions</span>
+                    </button>
+                    {isFactionsListOpen && (
+                      <FactionsListDialog
+                        factions={gameState.factions}
+                        onSelectFaction={(factionId) => {
+                          onSelectFaction(factionId);
+                          setIsFactionsListOpen(false);
+                        }}
+                        onClose={() => setIsFactionsListOpen(false)}
+                      />
+                    )}
+                  </div>
+              </div>
           </div>
 
           <div className="flex items-center space-x-2">

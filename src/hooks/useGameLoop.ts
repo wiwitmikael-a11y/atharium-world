@@ -1,8 +1,8 @@
 
 
 import { useEffect, useRef } from 'react';
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, FactionArchetype, TechNode } from '../types';
-import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, WORLD_EVENTS, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, TECH_TREES } from '../constants';
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, FactionArchetype, TechNode } from '../types';
+import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, WORLD_EVENTS, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, TECH_TREES } from '../constants';
 
 const FACTION_POWER_CACHE: Record<string, { power: number, tick: number }> = {};
 
@@ -505,8 +505,8 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
                     if (infra.consumes && infra.consumes.length > 0 && infra.produces) {
                         const canAffordConsumption = infra.consumes.every(c => (owner.resources[c.resourceId] || 0) >= c.amount);
-                        const prodResDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
-                        const storageTier = owner.storage[prodResDef.tier];
+                        const producedResourceDefinition = RESOURCES_MAP.get(infra.produces.resourceId)!;
+                        const storageTier = owner.storage[producedResourceDefinition.tier];
                         const hasStorage = storageTier.current < storageTier.capacity;
 
                         if (canAffordConsumption && hasStorage) {
@@ -516,7 +516,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                                 owner.storage[consumesResDef.tier].current -= c.amount;
                             });
 
-                            const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: prodResDef.tier });
+                            const productionBonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: producedResourceDefinition.tier });
                             const finalAmount = infra.produces.amount * (1 + productionBonus);
                             processResource(infra.produces.resourceId, finalAmount);
                             

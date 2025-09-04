@@ -49,6 +49,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                             />
                         </div>
 
+                        <div>
+                            <label htmlFor="walletAddress" className="block text-left text-sm font-medium text-gray-300 mb-1">
+                                Wallet Address
+                            </label>
+                            <input
+                                id="walletAddress"
+                                type="text"
+                                defaultValue="Blockchain under development"
+                                disabled
+                                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-600 rounded-lg text-gray-400 italic cursor-not-allowed"
+                            />
+                        </div>
+
                         <button
                             type="submit"
                             className="w-full text-xl font-cinzel px-8 py-3 bg-cyan-600/80 border-2 border-cyan-400 rounded-lg shadow-lg text-white hover:bg-cyan-500 hover:shadow-cyan-400/50 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
@@ -57,9 +70,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                             Enter World
                         </button>
                     </form>
-                    <p className="mt-6 text-cyan-300 text-sm font-mono copyright-glow">
-                        © 2025 Rangga x Atharrazka
-                    </p>
+                    <div className="mt-6">
+                        <p className="text-xs text-white text-right">
+                            Alpha Build v1.0
+                        </p>
+                        <p className="mt-1 text-cyan-300 text-base font-mono copyright-glow text-center">
+                            © 2025 Rangga x Atharrazka
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

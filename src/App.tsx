@@ -9,7 +9,7 @@ import GameMap from './components/GameMap';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import EventTicker from './components/EventTicker';
-import { BIOMES_MAP, WORLD_SIZE } from './constants';
+import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE } from './constants';
 import IntroVideo from './components/IntroVideo';
 import StartMenu from './components/StartMenu';
 import LoginScreen from './components/LoginScreen';
@@ -117,6 +117,26 @@ const App: React.FC = () => {
         };
     });
   }, [findUnitLocation]);
+
+  const handleSelectFaction = useCallback((factionId: string) => {
+    if (!gameState) return;
+
+    const settlements = gameState.world.flat()
+      .filter(t => t.ownerFactionId === factionId && t.infrastructureId?.startsWith('settlement_'));
+
+    if (settlements.length > 0) {
+      settlements.sort((a, b) => {
+        const tierA = INFRASTRUCTURE_MAP.get(a.infrastructureId!)?.tier || 0;
+        const tierB = INFRASTRUCTURE_MAP.get(b.infrastructureId!)?.tier || 0;
+        return tierB - tierA;
+      });
+
+      const capital = settlements[0];
+      handlePanToLocation({ x: capital.x, y: capital.y });
+      handleSelectTile(capital.x, capital.y);
+    }
+  }, [gameState, handlePanToLocation, handleSelectTile]);
+
 
     const handleSaveGame = useCallback(() => {
         if (gameState && username) {
@@ -286,6 +306,7 @@ const App: React.FC = () => {
               onExitToMenu={handleExitToMenu}
               onSaveGame={handleSaveGame}
               onToggleHelp={() => setIsHelpOpen(p => !p)}
+              onSelectFaction={handleSelectFaction}
             />
             <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
           </main>

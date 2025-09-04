@@ -12,7 +12,6 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress, loadingMessage 
     <div className="w-screen h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
       <div 
         className="text-center mb-8"
-        // FIX: The value for a CSS property must be a string, not a boolean. Changed to return 'running' or 'paused'.
         style={{ animationPlayState: progress < 1 ? 'running' : 'paused' }}
       >
         <h1 className="text-6xl font-cinzel text-cyan-300 mb-2" style={{ textShadow: '0 0 15px rgba(45, 212, 191, 0.5)' }}>ATHARIUM</h1>
@@ -31,5 +30,4 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress, loadingMessage 
   );
 };
 
-// FIX: Add default export to make the component importable.
 export default LoadingScreen;
