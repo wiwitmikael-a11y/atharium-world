@@ -33,7 +33,9 @@ const Header: React.FC<HeaderProps> = ({ gameTime, factions, gameSpeed, onSetSpe
   const currentMonthName = MONTHS[currentMonthIndex];
 
   const topFaction = React.useMemo(() => {
-    return Object.values(factions).reduce((top, current) => current.athar > top.athar ? current : top, Object.values(factions)[0] || null);
+    const allFactions = Object.values(factions);
+    if (allFactions.length === 0) return null;
+    return allFactions.reduce((top: FactionState, current: FactionState) => current.athar > top.athar ? current : top, allFactions[0]);
   }, [factions]);
   
   const topFactionInfo = topFaction ? FACTIONS_MAP.get(topFaction.id) : null;

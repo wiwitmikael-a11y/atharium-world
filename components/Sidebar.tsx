@@ -1,7 +1,7 @@
 
 // FIX: Import `ResourceTier` to support the new storage display system.
 import React, { useMemo } from 'react';
-import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier } from '../types';
+import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, StorageTierData, DiplomaticRelation } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNIT_TRAITS_MAP, UNITS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
@@ -253,7 +253,7 @@ const renderContent = () => {
                     {/* FIX: Replaced resource display to use the new faction.storage system, showing resources by tier. */}
                     {isSettlement && ownerFactionState.storage ? (
                         <div className="space-y-2">
-                            {Object.entries(ownerFactionState.storage).map(([tier, data]) => {
+                            {(Object.entries(ownerFactionState.storage) as [string, StorageTierData][]).map(([tier, data]) => {
                                 const percentage = data.capacity > 0 ? (data.current / data.capacity) * 100 : 0;
                                 const isNearCapacity = percentage > 90;
                                 const tierName = TIER_NAMES[tier as ResourceTier];
@@ -267,7 +267,7 @@ const renderContent = () => {
                                         <div className={`h-1.5 rounded-full ${isNearCapacity ? 'bg-yellow-500' : 'bg-cyan-500'}`} style={{ width: `${percentage}%` }}></div>
                                     </div>
                                     <ul className="text-xs text-gray-400 mt-1 pl-2">
-                                        {Object.entries(ownerFactionState.resources)
+                                        {(Object.entries(ownerFactionState.resources) as [string, number][])
                                             .filter(([resId]) => RESOURCES_MAP.get(resId)?.tier === tier && ownerFactionState.resources[resId] > 0)
                                             .map(([resId, amount]) => (
                                                 <li key={resId} className="flex justify-between">
@@ -318,7 +318,7 @@ const renderContent = () => {
                     <div className="mt-2 pt-2 border-t border-gray-600">
                          <h4 className="font-semibold text-gray-300">Diplomacy:</h4>
                          <ul className="text-sm space-y-1 mt-1">
-                            {Object.entries(ownerFactionState.diplomacy).sort(([aId], [bId]) => FACTIONS_MAP.get(aId)!.name.localeCompare(FACTIONS_MAP.get(bId)!.name)).map(([id, relation]) => {
+                            {(Object.entries(ownerFactionState.diplomacy) as [string, DiplomaticRelation][]).sort(([aId], [bId]) => FACTIONS_MAP.get(aId)!.name.localeCompare(FACTIONS_MAP.get(bId)!.name)).map(([id, relation]: [string, DiplomaticRelation]) => {
                                 const otherFaction = FACTIONS_MAP.get(id);
                                 if (!otherFaction) return null;
                                 const { color, icon } = getStatusStyles(relation.status);

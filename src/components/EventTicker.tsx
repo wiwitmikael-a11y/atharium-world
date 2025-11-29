@@ -21,6 +21,7 @@ const EVENT_ICONS: Record<GameEventType, { icon: string; color: string; }> = {
   [GameEventType.ALLIANCE_FORMED]: { icon: 'alliance', color: 'text-green-400' },
   [GameEventType.BIOME_CHANGE]: { icon: 'mountain', color: 'text-purple-400' },
   [GameEventType.WEATHER_CHANGE]: { icon: 'leaf', color: 'text-blue-400' },
+  [GameEventType.STARFALL]: { icon: 'sun', color: 'text-purple-500' },
 };
 
 const EventTicker: React.FC<EventTickerProps> = ({ events, onEventClick }) => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 const ZOOM_SENSITIVITY = 0.001;
 const MIN_ZOOM = 0.3;

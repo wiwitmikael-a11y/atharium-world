@@ -1,5 +1,4 @@
-
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 // FIX: Add ResourceTier to support the new storage system.
 import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, UnitTrait, GameEvent, CombatLogEntry, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier } from '../types';
 // FIX: Remove RESOURCES as it's no longer used after refactoring to the storage system.

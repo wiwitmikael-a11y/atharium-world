@@ -12,7 +12,7 @@ export interface Trait {
 }
 
 export interface UnitTraitEffect {
-  type: 'DAMAGE_REDUCTION_PERCENT' | 'BONUS_ATTACK_VS_TRAIT' | 'CRITICAL_CHANCE' | 'HP_REGEN' | 'FIRST_STRIKE';
+  type: 'DAMAGE_REDUCTION_PERCENT' | 'BONUS_ATTACK_VS_TRAIT' | 'CRITICAL_CHANCE' | 'HP_REGEN' | 'FIRST_STRIKE' | 'ATHARIUM_CORRUPTION_RESIST' | 'EXPLODE_ON_DEATH';
   value?: number;
   traitId?: string;
   chance?: number;
@@ -29,8 +29,10 @@ export interface UnitTrait {
 export interface Character {
   id: string;
   name: string;
+  title: string;
   age: number;
   traitIds: string[];
+  lore: string;
   skills: {
     martial: number;
     diplomacy: number;
@@ -45,14 +47,15 @@ export type FactionEffectType =
   | 'INFRASTRUCTURE_COST_MOD'
   | 'UNIT_COST_MOD'
   | 'POP_GROWTH_MOD'
-  | 'UNIT_STAT_MOD';
+  | 'UNIT_STAT_MOD'
+  | 'ATHARIUM_EFFICIENCY';
 
 export interface FactionTraitEffect {
   type: FactionEffectType;
   value: number; // e.g., 0.1 for +10%
   resourceTier?: Resource['tier'];
   unitRole?: UnitRole;
-  stat?: 'hp' | 'atk';
+  stat?: 'hp' | 'atk' | 'def';
 }
 
 export interface FactionTrait {
@@ -61,12 +64,21 @@ export interface FactionTrait {
   effects: FactionTraitEffect[];
 }
 
-export type FactionArchetype = 'Industrial' | 'Nature' | 'Holy' | 'Shadow' | 'Mountain' | 'Undead' | 'Nomadic';
+export type FactionArchetype = 
+  | 'Industrial' // Uses Atharium for steam engines
+  | 'Nature'     // Mutated by Atharium
+  | 'Holy'       // Worshippers of the Starfall
+  | 'Shadow'     // Users of corrupted Void-Atharium
+  | 'Mountain'   // Deep miners of the crystal
+  | 'Undead'     // Reanimated by Atharium radiation
+  | 'Scavenger'  // Post-apoc survivors
+  | 'Arcane';    // Old-world mages
 
 export interface Faction {
   id: string;
   name: string;
   color: string;
+  description: string;
   traits: FactionTrait[];
   preferredBiomes: string[];
   archetype: FactionArchetype;
@@ -82,7 +94,7 @@ export interface Faction {
 // WORLD & MAP DEFINITIONS
 //
 
-export type WeatherType = 'Clear' | 'Rain' | 'Storm' | 'Fog' | 'Heatwave';
+export type WeatherType = 'Clear' | 'Acid Rain' | 'Aether Storm' | 'Smog' | 'Heatwave';
 
 export interface TerrainEffect {
   description: string;
@@ -91,7 +103,7 @@ export interface TerrainEffect {
     unitRole?: UnitRole;
   };
   effects: {
-    stat: 'atk' | 'def';
+    stat: 'atk' | 'def' | 'hp';
     modifier: number;
   }[];
 }
@@ -103,9 +115,10 @@ export interface Biome {
   terrainEffects: TerrainEffect[];
   spreadsTo?: string[]; // Biome expansion logic
   spreadChance?: number;
+  corruptionRate?: number; // How much it mutates units
 }
 
-export type ResourceTier = 'Raw' | 'Processed' | 'Component' | 'Exotic';
+export type ResourceTier = 'Scrap' | 'Raw' | 'Refined' | 'Atharium' | 'Artifact';
 
 export interface Resource {
   id: string;
@@ -113,15 +126,16 @@ export interface Resource {
   tier: ResourceTier;
   biomes?: string[];
   assetId: string;
-  rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
+  rarity: 'Common' | 'Uncommon' | 'Rare' | 'Legendary';
   respawnTime?: number;
+  description?: string;
 }
 
 //
 // ITEM & EQUIPMENT SYSTEM
 //
 
-export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary' | 'Artifact';
 export type EquipmentSlot = 'Weapon' | 'Armor' | 'Accessory' | 'None';
 
 export type StatEffect =
@@ -129,7 +143,7 @@ export type StatEffect =
   | 'ATTACK_FLAT' | 'ATTACK_PERCENT'
   | 'DEFENSE_FLAT' | 'DEFENSE_PERCENT'
   | 'BONUS_DMG_VS_MELEE' | 'BONUS_DMG_VS_RANGED' | 'BONUS_DMG_VS_SPECIAL'
-  | 'FIRST_STRIKE_CHANCE' | 'HP_REGEN';
+  | 'FIRST_STRIKE_CHANCE' | 'HP_REGEN' | 'SPEED_MOD';
 
 export interface ItemEffect {
   type: StatEffect;
@@ -150,7 +164,7 @@ export interface ItemDefinition {
 // UNIT & INFRASTRUCTURE DEFINITIONS
 //
 
-export type UnitRole = 'Worker' | 'Melee' | 'Ranged' | 'Special' | 'Support' | 'Hero';
+export type UnitRole = 'Worker' | 'Scout' | 'Infantry' | 'Ranged' | 'Cavalry' | 'Siege' | 'Construct' | 'Hero';
 
 export interface UnitDefinition {
   id: string;
@@ -164,12 +178,13 @@ export interface UnitDefinition {
   cost: Record<string, number>;
   tier: number;
   traitIds?: string[];
+  description?: string;
 }
 
 export interface AdjacencyBonus {
     targetType: 'Biome' | 'Infrastructure';
     targetId: string; // Biome ID or Infrastructure ID
-    effect: 'Production' | 'Defense';
+    effect: 'Production' | 'Defense' | 'Corruption';
     value: number; // Multiplier (e.g., 0.5 for +50%)
 }
 
@@ -191,13 +206,13 @@ export interface Infrastructure {
   generatesResearchPoints?: number;
   xpGain?: number;
   adjacencyBonuses?: AdjacencyBonus[];
-  pollution?: number; // New: Generates corruption
+  pollution?: number; // Generates corruption/Atharium radiation
 }
 
 export interface WorldEvent {
   id: string;
   name: string;
-  type: 'Discovery' | 'Relic' | 'Hazard';
+  type: 'Discovery' | 'Relic' | 'Hazard' | 'Anomaly';
   assetId: string;
   description: string;
 }
@@ -217,13 +232,17 @@ export interface CombatLogEntry {
 }
 
 // Advanced Procedural Generation Types
+export type BodyType = 'Humanoid' | 'Construct' | 'Insectoid' | 'Ethereal' | 'Beast' | 'Floating' | 'Vehicle';
+
 export interface VisualGenes {
     bodyColor: string;
-    headType: 'Standard' | 'Hood' | 'Helm' | 'Crown' | 'Beast' | 'Mask';
-    weaponType: 'None' | 'Sword' | 'Axe' | 'Bow' | 'Staff' | 'Hammer' | 'Daggers';
+    secondaryColor: string; // Faction accent
+    bodyType: BodyType;
+    headType: 'Standard' | 'Hood' | 'Helm' | 'Crown' | 'Beast' | 'Mask' | 'Eye' | 'Void' | 'GasMask';
+    weaponType: 'None' | 'Sword' | 'Axe' | 'Bow' | 'Staff' | 'Hammer' | 'Daggers' | 'Claws' | 'Orb' | 'Rifle' | 'Wrench';
     weaponColor: string;
     sizeScale: number;
-    accessory?: 'None' | 'Cape' | 'Backpack' | 'Wings';
+    accessory?: 'None' | 'Cape' | 'Backpack' | 'Wings' | 'Aura' | 'Spikes' | 'Pipes' | 'Crystals';
 }
 
 export interface UnitInstance {
@@ -265,7 +284,7 @@ export interface TileData {
   resourceCache?: Record<string, number>;
   resourceCooldown?: number;
   efficiency?: number;
-  corruption?: number; // 0-100, determines biome shift
+  corruption?: number; // 0-100, determines Atharium poisoning
 }
 
 export enum GameEventType {
@@ -278,6 +297,7 @@ export enum GameEventType {
   ALLIANCE_FORMED,
   BIOME_CHANGE,
   WEATHER_CHANGE,
+  STARFALL,
 }
 
 export interface GameEvent {
@@ -288,7 +308,7 @@ export interface GameEvent {
   location: { x: number, y: number };
 }
 
-export type DiplomaticStatus = 'War' | 'Neutral' | 'Alliance';
+export type DiplomaticStatus = 'War' | 'Neutral' | 'Alliance' | 'Vassal';
 
 export interface DiplomaticRelation {
   status: DiplomaticStatus;
@@ -325,7 +345,7 @@ export interface FloatingText {
     velocity: { x: number, y: number };
 }
 
-export type GodPowerType = 'Smite' | 'Heal' | 'Enrich';
+export type GodPowerType = 'Smite' | 'Heal' | 'Enrich' | 'Corrupt';
 
 export interface GodPower {
     id: GodPowerType;

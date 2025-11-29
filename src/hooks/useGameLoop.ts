@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType, ItemDefinition, WeatherType, FloatingText } from '../types';
 import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCES, XP_PER_LEVEL, INFRA_HP_COST_MULTIPLIER, LEVEL_MILESTONES, RESOURCE_SPAWN_CHANCES } from '../constants';
 import { ITEMS } from '../services/dataLoader';
@@ -153,13 +153,13 @@ const calculateTerrainBonus = (unit: UnitInstance, biome: Biome, weather: Weathe
         }
     }
 
-    if (weather === 'Rain') {
+    if (weather === 'Acid Rain') {
         if (unitDef.role === 'Ranged') atkBonus -= 0.2;
         if (factionInfo.archetype === 'Nature') defBonus += 0.1;
-    } else if (weather === 'Storm') {
+    } else if (weather === 'Aether Storm') {
         atkBonus -= 0.1;
         defBonus -= 0.1;
-    } else if (weather === 'Fog') {
+    } else if (weather === 'Smog') {
         if (unitDef.role === 'Ranged') atkBonus -= 0.3;
         if (factionInfo.archetype === 'Shadow') atkBonus += 0.2;
     }
@@ -264,8 +264,10 @@ const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: T
                         x: settlement.x, y: settlement.y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Guarding',
                         visualGenes: {
                             bodyColor: FACTIONS_MAP.get(faction.id)?.color ? '#ef4444' : '#888',
-                            headType: unitToTrain.role === 'Hero' ? 'Crown' : unitToTrain.role === 'Melee' ? 'Helm' : unitToTrain.role === 'Ranged' ? 'Hood' : 'Standard',
-                            weaponType: unitToTrain.role === 'Ranged' ? 'Bow' : unitToTrain.role === 'Support' ? 'Staff' : unitToTrain.role === 'Melee' ? (Math.random() > 0.5 ? 'Sword' : 'Axe') : 'None',
+                            secondaryColor: '#ffffff',
+                            bodyType: 'Humanoid',
+                            headType: unitToTrain.role === 'Hero' ? 'Crown' : (unitToTrain.role === 'Infantry' || unitToTrain.role === 'Cavalry') ? 'Helm' : unitToTrain.role === 'Ranged' ? 'Hood' : 'Standard',
+                            weaponType: unitToTrain.role === 'Ranged' ? 'Bow' : (unitToTrain.role === 'Construct' || unitToTrain.role === 'Siege') ? 'Hammer' : (unitToTrain.role === 'Infantry' || unitToTrain.role === 'Cavalry') ? (Math.random() > 0.5 ? 'Sword' : 'Axe') : 'None',
                             weaponColor: '#bdc3c7',
                             sizeScale: 1 + (Math.random() * 0.2 - 0.1),
                             accessory: Math.random() > 0.8 ? 'Cape' : 'None'
@@ -298,6 +300,8 @@ const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileD
                 combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Adventuring',
                 visualGenes: {
                     bodyColor: '#ffd700',
+                    secondaryColor: '#ffffff',
+                    bodyType: 'Humanoid',
                     headType: 'Crown',
                     weaponType: 'Hammer',
                     weaponColor: '#ffd700',
@@ -344,7 +348,7 @@ const runDiplomacyAI = (newState: GameState, faction: FactionState, factionId: s
 
 const updateWeather = (newState: GameState) => {
     if (newState.gameTime.tick % 500 === 0 && Math.random() < 0.3) {
-        const weathers: WeatherType[] = ['Clear', 'Rain', 'Storm', 'Fog', 'Heatwave'];
+        const weathers: WeatherType[] = ['Clear', 'Acid Rain', 'Aether Storm', 'Smog', 'Heatwave'];
         const newWeather = weathers[Math.floor(Math.random() * weathers.length)];
         newState.weather = newWeather;
         addGameEvent(newState, GameEventType.WEATHER_CHANGE, `Weather changed to ${newWeather}`, {x: -1, y: -1});

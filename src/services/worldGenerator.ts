@@ -1,6 +1,6 @@
 
 import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP, RESOURCE_SPAWN_CHANCES, STARTING_YEAR, INFRA_HP_COST_MULTIPLIER } from '../constants';
-import type { TileData, GameState, FactionState, Faction, UnitDefinition, ResourceTier, UnitInstance, ItemDefinition } from '../types';
+import type { TileData, GameState, FactionState, Faction, UnitDefinition, ResourceTier, UnitInstance, ItemDefinition, BodyType, VisualGenes } from '../types';
 import { ITEMS, ITEMS_MAP } from './dataLoader';
 import { getUnitStats } from '../utils/unit';
 
@@ -10,30 +10,90 @@ const getRandomInt = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+const getFactionVisualGenes = (faction: Faction, role: string, tier: number): VisualGenes => {
+    const primary = FACTIONS_MAP.get(faction.id)?.color ? '#ef4444' : '#888'; 
+    let bodyType: BodyType = 'Humanoid';
+    let headType: VisualGenes['headType'] = 'Standard';
+    let accessory: VisualGenes['accessory'] = 'None';
+    let weaponType: VisualGenes['weaponType'] = 'None';
+
+    // Base Archetype Logic
+    if (faction.archetype === 'Industrial') {
+        bodyType = role === 'Worker' ? 'Construct' : 'Humanoid';
+        headType = 'Helm';
+        accessory = 'Pipes';
+    } else if (faction.archetype === 'Nature') {
+        bodyType = role === 'Construct' ? 'Beast' : 'Humanoid';
+        headType = 'Hood';
+    } else if (faction.archetype === 'Shadow') {
+        bodyType = 'Humanoid';
+        headType = 'Mask';
+        accessory = 'Cape';
+    } else if (faction.archetype === 'Undead') {
+        bodyType = role === 'Construct' ? 'Construct' : 'Humanoid';
+        headType = 'Mask'; // Skull-like
+    } else if (faction.archetype === 'Arcane') {
+        bodyType = role === 'Construct' ? 'Floating' : 'Ethereal';
+        headType = 'Crown';
+        accessory = 'Aura';
+    } else if (faction.archetype === 'Scavenger') {
+        bodyType = role === 'Siege' ? 'Vehicle' : 'Humanoid';
+        headType = 'GasMask';
+        accessory = 'Spikes';
+    } else if (faction.archetype === 'Mountain') {
+        bodyType = 'Humanoid';
+        headType = 'Helm';
+    }
+
+    // Role Overrides
+    if (role === 'Hero') {
+        accessory = 'Aura';
+        headType = 'Crown';
+    }
+    if (role === 'Construct' || role === 'Siege') {
+        if (faction.archetype === 'Industrial') bodyType = 'Construct';
+        if (faction.archetype === 'Scavenger') bodyType = 'Vehicle';
+    }
+
+    // Weapon Logic
+    if (role === 'Ranged') weaponType = faction.archetype === 'Industrial' ? 'Rifle' : 'Bow';
+    else if (role === 'Infantry') weaponType = faction.archetype === 'Scavenger' ? 'Wrench' : 'Sword';
+    else if (role === 'Siege') weaponType = 'Hammer';
+    else if (role === 'Scout') weaponType = 'Daggers';
+
+    return {
+        bodyColor: primary, 
+        secondaryColor: '#ffffff',
+        bodyType,
+        headType,
+        weaponType,
+        weaponColor: '#silver',
+        sizeScale: role === 'Hero' ? 1.3 : role === 'Construct' ? 1.5 : 1,
+        accessory
+    };
+}
+
 const createUnit = (id: number, unitDef: UnitDefinition, factionInfo: Faction, x: number, y: number): UnitInstance => {
     const equipment: UnitInstance['equipment'] = { Weapon: null, Armor: null, Accessory: null };
     let defaultWeapon: ItemDefinition | undefined;
 
     switch(unitDef.role) {
         case 'Worker': defaultWeapon = ITEMS_MAP.get('chipped_axe'); break;
-        case 'Melee': defaultWeapon = ITEMS_MAP.get('rusty_shortsword'); break;
+        case 'Infantry': defaultWeapon = ITEMS_MAP.get('rusty_shortsword'); break;
         case 'Ranged': defaultWeapon = ITEMS_MAP.get('splintered_shortbow'); break;
-        case 'Support': case 'Hero': default: defaultWeapon = ITEMS_MAP.get('gnarled_staff'); break;
+        case 'Scout': defaultWeapon = ITEMS_MAP.get('shadow_stiletto'); break;
+        case 'Hero': default: defaultWeapon = ITEMS_MAP.get('gnarled_staff'); break;
     }
     
     if (defaultWeapon) equipment.Weapon = defaultWeapon;
+
+    const genes = getFactionVisualGenes(factionInfo, unitDef.role, unitDef.tier);
 
     const newUnit: UnitInstance = {
         id, unitId: unitDef.id, factionId: factionInfo.id, hp: 0, x, y,
         level: 1, xp: 0, killCount: 0, combatLog: [],
         inventory: [], equipment, currentActivity: 'Guarding',
-        visualGenes: {
-            bodyColor: FACTIONS_MAP.get(factionInfo.id)?.color ? '#ef4444' : '#888',
-            headType: unitDef.role === 'Hero' ? 'Crown' : unitDef.role === 'Melee' ? 'Helm' : 'Standard',
-            weaponType: unitDef.role === 'Ranged' ? 'Bow' : unitDef.role === 'Support' ? 'Staff' : 'Sword',
-            weaponColor: '#bdc3c7',
-            sizeScale: 1
-        }
+        visualGenes: genes
     };
     newUnit.hp = getUnitStats(newUnit).maxHp;
     return newUnit;
@@ -86,7 +146,7 @@ const placeBiomes = (world: TileData[][]) => {
 }
 
 const placeResources = (world: TileData[][]) => {
-  const rawResources = RESOURCES.filter(r => r.tier === 'Raw');
+  const rawResources = RESOURCES.filter(r => r.tier === 'Raw' || r.tier === 'Scrap' || r.tier === 'Atharium');
   for (let y = 0; y < WORLD_SIZE; y++) {
     for (let x = 0; x < WORLD_SIZE; x++) {
         const tile = world[y][x];
@@ -179,7 +239,7 @@ const placeFactions = (world: TileData[][], factions: Record<string, FactionStat
                     
                     if (areaIsValid) {
                         const rootTile = world[y][x];
-                        const maxHp = (Object.values(hamletDef.upgradeCost!).reduce((s, a) => s + a, 0)) * INFRA_HP_COST_MULTIPLIER;
+                        const maxHp = (Object.values(hamletDef.upgradeCost || hamletDef.cost).reduce((s, a) => s + a, 0)) * INFRA_HP_COST_MULTIPLIER;
                         
                         rootTile.ownerFactionId = factionId;
                         rootTile.infrastructureId = hamletDef.id;
@@ -197,9 +257,10 @@ const placeFactions = (world: TileData[][], factions: Record<string, FactionStat
                             rootTile.units.push(createUnit(unitIdCounter++, workerDef, factionInfo, x, y));
                             rootTile.units.push(createUnit(unitIdCounter++, workerDef, factionInfo, x, y));
                         }
-                        const rangedDef = UNITS.find(u => u.factionId === factionId && u.role === 'Ranged' && u.tier === 1);
-                        if (rangedDef) {
-                            rootTile.units.push(createUnit(unitIdCounter++, rangedDef, factionInfo, x, y));
+                        // Scouts or low tier infantry for start
+                        const scoutDef = UNITS.find(u => u.factionId === factionId && u.role === 'Scout') || UNITS.find(u => u.factionId === factionId && u.tier === 1);
+                        if (scoutDef) {
+                            rootTile.units.push(createUnit(unitIdCounter++, scoutDef, factionInfo, x, y));
                         }
                         
                         placed = true;
@@ -218,10 +279,10 @@ export function generateInitialGameState(): GameState {
 
   const factionStates: Record<string, FactionState> = {};
   const mainFactions = FACTIONS.filter(f => f.id !== 'neutral_hostile');
-  const startingResources = { 'steamwood_plank': 20, 'iron_ingot': 20 };
+  const startingResources = { 'scrap_metal': 50, 'mutated_wood': 50 };
 
   mainFactions.forEach((faction, index) => {
-    const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = { Raw: { current: 0, capacity: 0 }, Processed: { current: 0, capacity: 0 }, Component: { current: 0, capacity: 0 }, Exotic: { current: 0, capacity: 0 }, };
+    const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = { Scrap: { current: 0, capacity: 0 }, Raw: { current: 0, capacity: 0 }, Refined: { current: 0, capacity: 0 }, Atharium: { current: 0, capacity: 0 }, Artifact: { current: 0, capacity: 0 } };
     const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet')!;
     if (hamletDef.addsStorage) {
         for (const [tier, amount] of Object.entries(hamletDef.addsStorage)) {
@@ -242,8 +303,9 @@ export function generateInitialGameState(): GameState {
 
   const factionIds = Object.keys(factionStates);
   const naturalEnemies: Record<string, { nemesis: string, opinion: number }> = {
-      'f1': { nemesis: 'f2', opinion: -25 },
-      'f3': { nemesis: 'f7', opinion: -50 },
+      'f1': { nemesis: 'f2', opinion: -50 }, // Industrial vs Nature
+      'f3': { nemesis: 'f4', opinion: -50 }, // Holy vs Shadow
+      'f7': { nemesis: 'f8', opinion: -50 }, // Undead vs Scavenger
   };
   for (const fA of factionIds) {
     for (const fB of factionIds) {
