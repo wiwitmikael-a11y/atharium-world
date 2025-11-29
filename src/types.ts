@@ -345,14 +345,18 @@ export interface FloatingText {
     velocity: { x: number, y: number };
 }
 
-export type GodPowerType = 'Smite' | 'Heal' | 'Enrich' | 'Corrupt';
+export type GodPowerCategory = 'World' | 'Civilization' | 'Destruction' | 'Creatures';
 
 export interface GodPower {
-    id: GodPowerType;
+    id: string;
     name: string;
+    category: GodPowerCategory;
     cost: number;
     icon: string;
     description: string;
+    brushSize?: number; // 1 = 1x1, 2 = 3x3 (radius 1), etc.
+    effectType: 'Terraform' | 'Spawn' | 'Damage' | 'Heal' | 'Resource';
+    payload?: string; // Biome ID, Unit ID, etc.
 }
 
 export interface GameState {
@@ -373,8 +377,9 @@ export interface GameState {
   eventLog: GameEvent[];
   nextEventId: number;
   totalMintedAthar: number;
-  floatingTexts: FloatingText[]; // New: For combat feedback
-  activeGodPower: GodPowerType | null; // New: Interaction mode
+  floatingTexts: FloatingText[]; 
+  activeGodPower: GodPower | null;
+  brushSize: number;
 }
 
 //

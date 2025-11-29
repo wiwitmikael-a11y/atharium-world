@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GameEvent, GameEventType } from '../types';
 import { TICK_PER_YEAR, STARTING_YEAR } from '../constants';
@@ -28,31 +27,31 @@ const EventTicker: React.FC<EventTickerProps> = ({ events, onEventClick }) => {
   if (events.length === 0) return null;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 bg-black/60 backdrop-blur-sm z-30 p-2 overflow-hidden flex flex-col">
-       <h3 className="text-sm font-bold text-cyan-400 mb-1 pl-2">World Events</h3>
-       <ul className="flex-1 overflow-y-auto pr-2">
-            {events.map((event) => {
-                const eventMeta = EVENT_ICONS[event.type] || { icon: 'cube', color: 'text-gray-400' };
-                const canJump = event.location.x >= 0 && event.location.y >= 0;
+    <div className="absolute bottom-8 left-0 right-0 h-16 md:h-20 bg-black/40 backdrop-blur-sm z-20 pointer-events-none flex flex-col justify-end">
+       <div className="pointer-events-auto w-full md:w-1/3 bg-black/70 p-2 rounded-tr-lg border-t border-r border-cyan-900/50 max-h-full overflow-y-auto scrollbar-thin">
+           <ul className="flex flex-col-reverse">
+                {events.slice(0, 3).map((event) => {
+                    const eventMeta = EVENT_ICONS[event.type] || { icon: 'cube', color: 'text-gray-400' };
+                    const canJump = event.location.x >= 0 && event.location.y >= 0;
 
-                return (
-                    <li 
-                        key={event.id}
-                        className={`text-gray-300 text-xs sm:text-sm mb-1 p-1 rounded transition-colors flex items-center justify-between ${canJump ? 'hover:bg-gray-700/80 cursor-pointer' : ''}`}
-                        onClick={() => canJump && onEventClick(event.location)}
-                        title={canJump ? `Click to jump to location (${event.location.x}, ${event.location.y})` : undefined}
-                    >
-                        <div className="flex items-center flex-1 min-w-0">
-                            <Icon name={eventMeta.icon} className={`w-4 h-4 ${eventMeta.color} flex-shrink-0 mr-2`} />
-                            <span className="truncate">
-                                <span className="font-mono text-cyan-500 mr-2">[{getYearFromTick(event.tick)}]</span>
-                                {event.message}
-                            </span>
-                        </div>
-                    </li>
-                );
-            })}
-       </ul>
+                    return (
+                        <li 
+                            key={event.id}
+                            className={`text-gray-300 text-[10px] md:text-xs mb-1 last:mb-0 p-1 rounded transition-colors flex items-center justify-between ${canJump ? 'hover:bg-gray-700/80 cursor-pointer' : ''}`}
+                            onClick={() => canJump && onEventClick(event.location)}
+                        >
+                            <div className="flex items-center flex-1 min-w-0">
+                                <Icon name={eventMeta.icon} className={`w-3 h-3 ${eventMeta.color} flex-shrink-0 mr-1.5`} />
+                                <span className="truncate">
+                                    <span className="font-mono text-cyan-500 mr-1">[{getYearFromTick(event.tick)}]</span>
+                                    {event.message}
+                                </span>
+                            </div>
+                        </li>
+                    );
+                })}
+           </ul>
+       </div>
     </div>
   );
 };

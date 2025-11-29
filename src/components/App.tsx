@@ -1,6 +1,5 @@
-
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import type { GameState, TileData, GamePhase, GodPowerType } from '../types';
+import type { GameState, TileData, GamePhase, GodPower } from '../types';
 import { generateInitialGameState } from '../services/worldGenerator';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useCameraControls } from '../hooks/useCameraControls';
@@ -86,7 +85,6 @@ const App: React.FC = () => {
   }, []);
   
   const handleSelectTile = useCallback((x: number, y: number) => {
-    // If God Power is active, apply it instead of selecting
     if (gameState?.activeGodPower) {
         setGameState(prev => {
             if (!prev) return null;
@@ -94,7 +92,7 @@ const App: React.FC = () => {
             const tile = newState.world[y][x];
             let effectApplied = false;
 
-            if (newState.activeGodPower === 'Smite' && newState.totalMintedAthar >= 50) {
+            if (newState.activeGodPower?.id === 'Smite' && newState.totalMintedAthar >= 50) {
                 if (tile.units.length > 0) {
                     tile.units.forEach(u => u.hp -= 50);
                     newState.floatingTexts.push({ id: Math.random(), text: "-50", x, y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
@@ -105,14 +103,14 @@ const App: React.FC = () => {
                     effectApplied = true;
                 }
                 if (effectApplied) newState.totalMintedAthar -= 50;
-            } else if (newState.activeGodPower === 'Heal' && newState.totalMintedAthar >= 30) {
+            } else if (newState.activeGodPower?.id === 'Heal' && newState.totalMintedAthar >= 30) {
                 if (tile.units.length > 0) {
                     tile.units.forEach(u => u.hp += 50);
                     newState.floatingTexts.push({ id: Math.random(), text: "+50", x, y, color: "#00FF00", life: 1, velocity: {x:0, y:-0.1} });
                     effectApplied = true;
                 }
                 if (effectApplied) newState.totalMintedAthar -= 30;
-            } else if (newState.activeGodPower === 'Enrich' && newState.totalMintedAthar >= 100) {
+            } else if (newState.activeGodPower?.id === 'Enrich' && newState.totalMintedAthar >= 100) {
                 if (!tile.resourceId && !tile.infrastructureId) {
                     tile.resourceId = 'resource_fluxbloom';
                     newState.floatingTexts.push({ id: Math.random(), text: "Enriched!", x, y, color: "#00FFFF", life: 1, velocity: {x:0, y:-0.1} });
@@ -122,8 +120,8 @@ const App: React.FC = () => {
             }
 
             if (effectApplied) {
-                soundManager.playSFX('sfx_build_start'); // Reuse sound for now
-                newState.activeGodPower = null; // Deactivate after use
+                soundManager.playSFX('sfx_build_start'); 
+                newState.activeGodPower = null; 
             }
             return newState;
         });
@@ -163,7 +161,7 @@ const App: React.FC = () => {
     }
   }, [gameState, handlePanToLocation, handleSelectTile]);
 
-  const handleSetGodPower = useCallback((power: GodPowerType | null) => {
+  const handleSetGodPower = useCallback((power: GodPower | null) => {
       setGameState(prev => prev ? ({ ...prev, activeGodPower: power }) : null);
       if (power) soundManager.playUIHoverSFX();
   }, [soundManager]);
@@ -320,15 +318,27 @@ const App: React.FC = () => {
       case 'playing':
         if (gameState && soundManager.isAudioInitialized) {
           return (
-            <div className="w-full h-full flex">
-              <main ref={mapContainerRef} className="flex-1 h-full relative cursor-default">
+            <div className="w-full h-full relative overflow-hidden">
+              <main ref={mapContainerRef} className={`absolute inset-0 w-full h-full ${gameState.activeGodPower ? 'cursor-crosshair' : 'cursor-default'}`}>
                 <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
-                <Header gameState={gameState} gameSpeed={gameSpeed} onSetSpeed={setGameSpeed} soundManager={soundManager} onResetWorld={handleResetWorld} onExitToMenu={handleExitToMenu} onSaveGame={handleSaveGame} onToggleHelp={() => setIsHelpOpen(p => !p)} onSelectFaction={handleSelectFaction} />
-                <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
-                <GodPowersMenu activePower={gameState.activeGodPower} onSelectPower={handleSetGodPower} currentAthar={gameState.totalMintedAthar} />
-                <SaveConfirmationDialog show={showSaveConfirm} />
               </main>
-              <Sidebar selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y]?.[gameState.selectedTile.x] : null} gameState={gameState} onSelectUnit={handleSelectUnit} onPanToLocation={handlePanToLocation} soundManager={soundManager} isMinimized={isSidebarMinimized} onToggleMinimize={() => setIsSidebarMinimized(p => !p)} />
+              
+              {/* UI Overlay Layer */}
+              <div className="absolute inset-0 pointer-events-none">
+                  {/* Top Bar */}
+                  <Header gameState={gameState} gameSpeed={gameSpeed} onSetSpeed={setGameSpeed} soundManager={soundManager} onResetWorld={handleResetWorld} onExitToMenu={handleExitToMenu} onSaveGame={handleSaveGame} onToggleHelp={() => setIsHelpOpen(p => !p)} onSelectFaction={handleSelectFaction} />
+                  
+                  {/* Bottom Elements */}
+                  <GodPowersMenu activePower={gameState.activeGodPower} onSelectPower={handleSetGodPower} currentAthar={gameState.totalMintedAthar} />
+                  <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
+                  <SaveConfirmationDialog show={showSaveConfirm} />
+              </div>
+
+              {/* Sidebar (handles its own positioning/interaction) */}
+              <div className="pointer-events-auto">
+                <Sidebar selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y]?.[gameState.selectedTile.x] : null} gameState={gameState} onSelectUnit={handleSelectUnit} onPanToLocation={handlePanToLocation} soundManager={soundManager} isMinimized={isSidebarMinimized} onToggleMinimize={() => setIsSidebarMinimized(p => !p)} />
+              </div>
+
               {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} isFirstTime={isFirstTimeSession} />}
             </div>
           );

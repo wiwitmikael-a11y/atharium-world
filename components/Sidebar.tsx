@@ -361,7 +361,7 @@ const renderContent = () => {
                                 <ul className="text-xs text-gray-400">
                                     {Object.entries(infrastructure.upgradeCost).map(([id, amount]) => {
                                         const res = RESOURCES_MAP.get(id);
-                                        return <li key={id}>- {amount} {res?.name || id}</li>
+                                        return <li key={id}>- {amount as number} {res?.name || id}</li>
                                     })}
                                 </ul>
                             </div>

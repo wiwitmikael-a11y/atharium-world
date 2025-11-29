@@ -333,6 +333,7 @@ export function generateInitialGameState(): GameState {
       nextEventId: 0, 
       totalMintedAthar: 0,
       floatingTexts: [],
-      activeGodPower: null
+      activeGodPower: null,
+      brushSize: 1
     };
 }

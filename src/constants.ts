@@ -1,10 +1,10 @@
 
-import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, WorldEvent, UnitTrait, Rarity } from './types';
+import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, WorldEvent, UnitTrait, Rarity, GodPower } from './types';
 
 export const WORLD_SIZE = 80;
 export const TICK_PER_YEAR = 1000;
 export const ATHAR_CAP = 1000000;
-export const STARTING_YEAR = 214; // Years after Starfall
+export const STARTING_YEAR = 214; 
 export const XP_PER_LEVEL = 100;
 export const STAT_INCREASE_PER_LEVEL = 0.10;
 export const INFRA_HP_COST_MULTIPLIER = 10;
@@ -17,6 +17,25 @@ export const EPOCHS = Object.freeze([
   { id: 'the_great_flux', name: 'The Crystal Wars', synopsis: 'Demand for Atharium outstrips supply. Factions turn on each other. The atmosphere becomes choked with Aether-Smog, mutating the wildlife and empowering the darker arts.' },
   { id: 'epoch_of_the_cog_gods', name: 'Ascension of the Machine', synopsis: 'Flesh is weak. Metal is eternal. The survivors integrate Atharium directly into their bodies or transfer their souls into massive Cog-Golems. The planet begins to hum with a mechanical heartbeat.' },
 ]);
+
+export const GOD_POWERS: GodPower[] = [
+    // Destruction
+    { id: 'Smite', name: 'Divine Smite', category: 'Destruction', cost: 50, icon: 'bolt', description: 'Deals 50 damage. Good for disciplining heretics.', effectType: 'Damage' },
+    { id: 'Meteor', name: 'Meteor Strike', category: 'Destruction', cost: 200, icon: 'fire', description: 'Calls down a star. Massive area damage and terrain destruction.', brushSize: 3, effectType: 'Damage' },
+    
+    // Creatures
+    { id: 'Heal', name: 'Blessing', category: 'Creatures', cost: 30, icon: 'heart', description: 'Heals units and repairs buildings.', effectType: 'Heal' },
+    { id: 'Spawn_Orc', name: 'Spawn Scavengers', category: 'Creatures', cost: 100, icon: 'user', description: 'Spawn a Scavenger raiding party.', effectType: 'Spawn', payload: 'scav' },
+    { id: 'Spawn_Beast', name: 'Spawn Rad-Beast', category: 'Creatures', cost: 80, icon: 'leaf', description: 'Spawn a hostile mutated wolf.', effectType: 'Spawn', payload: 'rad_beast' },
+    
+    // World
+    { id: 'Terra_Forest', name: 'Plant Forest', category: 'World', cost: 10, icon: 'leaf', description: 'Transform land into Verdant Forest.', effectType: 'Terraform', payload: 'verdant' },
+    { id: 'Terra_Waste', name: 'Scorched Earth', category: 'World', cost: 10, icon: 'fire', description: 'Transform land into Wasteland.', effectType: 'Terraform', payload: 'wasteland' },
+    { id: 'Terra_Gloom', name: 'Spread Gloom', category: 'World', cost: 15, icon: 'moon', description: 'Transform land into Gloomwell.', effectType: 'Terraform', payload: 'gloomwell' },
+    
+    // Civilizations (Resources)
+    { id: 'Enrich', name: 'Enrich Soil', category: 'Civilization', cost: 100, icon: 'sun', description: 'Spawn random resources on an empty tile.', effectType: 'Resource' },
+];
 
 export const TRAITS: readonly Trait[] = Object.freeze([
   { id: 'brave', name: 'Iron Will', type: 'Good', description: 'Fearless in the face of horrors.', effects: 'Unit Attack +5%' },
@@ -39,49 +58,49 @@ export const CHARACTERS: readonly Character[] = Object.freeze([
 export const FACTIONS: readonly Faction[] = Object.freeze([
   { 
     id: 'f1', name: 'Iron-Lung Directorate', color: 'red-500', archetype: 'Industrial', 
-    description: 'A technocratic society that worships the machine. They strip-mine the earth to build towering cities of brass and steam.',
+    description: 'A technocratic society that worships the machine.',
     traits: [{ name: 'Mass Production', description: 'Factories churn out smoke and machines.', effects: [{type: 'PRODUCTION_MOD', value: 0.2}] }], 
     preferredBiomes: ['ashlands', 'wasteland'], personality: { aggression: 7, expansion: 9, diplomacy: 3 }, techTreeId: 'industrial_tech' 
   },
   { 
     id: 'f2', name: 'The Spore-Bound', color: 'green-500', archetype: 'Nature', 
-    description: 'Mutants who have formed a symbiosis with the irradiated flora. They seek to reclaim the ruins for nature.',
+    description: 'Mutants who have formed a symbiosis with the irradiated flora.',
     traits: [{ name: 'Photosynthesis', description: 'Regenerate in sunlight.', effects: [{type: 'POP_GROWTH_MOD', value: 0.15}] }], 
     preferredBiomes: ['verdant', 'gloomwell'], personality: { aggression: 4, expansion: 6, diplomacy: 5 }, techTreeId: 'nature_tech' 
   },
   { 
     id: 'f3', name: 'Order of the Eternal Flame', color: 'yellow-600', archetype: 'Holy', 
-    description: 'Religious zealots who believe Atharium is the blood of god. They wield fire and light to purge heresy.',
+    description: 'Religious zealots who believe Atharium is the blood of god.',
     traits: [{ name: 'Divine Mandate', description: 'Fearless in holy war.', effects: [{type: 'UNIT_STAT_MOD', stat: 'atk', value: 0.1}] }], 
     preferredBiomes: ['verdant', 'ashlands'], personality: { aggression: 9, expansion: 7, diplomacy: 2 }, techTreeId: 'holy_tech' 
   },
   { 
     id: 'f4', name: 'The Void-Touched', color: 'violet-500', archetype: 'Shadow', 
-    description: 'Cultists who have gazed too long into the Atharium crystals and saw the Void staring back.',
+    description: 'Cultists who have gazed too long into the Atharium crystals.',
     traits: [{ name: 'Shadow Walk', description: 'Movement is silent and deadly.', effects: [{type: 'UNIT_STAT_MOD', stat: 'def', value: 0.15}] }], 
     preferredBiomes: ['gloomwell', 'atharium_wastes'], personality: { aggression: 6, expansion: 5, diplomacy: 8 }, techTreeId: 'shadow_tech' 
   },
   { 
     id: 'f5', name: 'Deep-Rock Cartel', color: 'blue-400', archetype: 'Mountain', 
-    description: 'Dwarven miners who survived the apocalypse underground. They hoard Atharium and craft impregnable armor.',
+    description: 'Dwarven miners who survived the apocalypse underground.',
     traits: [{ name: 'Stone Skin', description: 'Tough as the mountain.', effects: [{type: 'UNIT_STAT_MOD', stat: 'hp', value: 0.2}] }], 
     preferredBiomes: ['ashlands', 'tundra'], personality: { aggression: 5, expansion: 4, diplomacy: 6 }, techTreeId: 'mountain_tech' 
   },
   { 
     id: 'f6', name: 'The Crystal Sovereignty', color: 'teal-400', archetype: 'Arcane', 
-    description: 'Descendants of the Old World mages. They use refined Atharium to power floating cities and construct golems.',
+    description: 'Descendants of the Old World mages.',
     traits: [{ name: 'Arcane Mastery', description: 'Superior energy manipulation.', effects: [{type: 'ATHARIUM_EFFICIENCY', value: 0.2}] }], 
     preferredBiomes: ['tundra', 'atharium_wastes'], personality: { aggression: 3, expansion: 3, diplomacy: 9 }, techTreeId: 'arcane_tech' 
   },
   { 
     id: 'f7', name: 'The Risen Dust', color: 'gray-400', archetype: 'Undead', 
-    description: 'Corpses reanimated by the fallout of the Starfall. A hivemind seeking to consume all biomass.',
+    description: 'Corpses reanimated by the fallout of the Starfall.',
     traits: [{ name: 'Endless Tide', description: 'Units are cheap and plentiful.', effects: [{type: 'UNIT_COST_MOD', value: -0.2}] }], 
     preferredBiomes: ['wasteland', 'atharium_wastes'], personality: { aggression: 10, expansion: 10, diplomacy: 0 }, techTreeId: 'undead_tech' 
   },
   { 
     id: 'f8', name: 'The Junk-Lords', color: 'orange-500', archetype: 'Scavenger', 
-    description: 'Raiders who rule the wastelands in rusted vehicles. They graft mechanical parts onto their bodies.',
+    description: 'Raiders who rule the wastelands in rusted vehicles.',
     traits: [{ name: 'Scavenger', description: 'More loot from ruins.', effects: [{type: 'PRODUCTION_MOD', resourceTier: 'Scrap', value: 0.3}] }], 
     preferredBiomes: ['ashlands', 'wasteland'], personality: { aggression: 9, expansion: 8, diplomacy: 1 }, techTreeId: 'scavenger_tech' 
   },
@@ -213,36 +232,36 @@ export const UNIT_TRAITS: readonly UnitTrait[] = [];
 export const UNIT_TRAITS_MAP = new Map(UNIT_TRAITS.map(t => [t.id, t]));
 
 export const BIOME_PASTEL_COLORS: Record<string, string> = {
-    gloomwell: '#2c3e50', // Dark Blue-Grey
-    verdant: '#27ae60',   // Lush Green
-    wasteland: '#d35400', // Burnt Orange
-    tundra: '#bdc3c7',    // Icy Grey
-    ashlands: '#7f8c8d',  // Volcanic Ash
-    atharium_wastes: '#8e44ad', // Magic Purple
+    gloomwell: '#1A237E', // Deep Indigo for eerie forest
+    verdant: '#2E7D32',   // Rich Forest Green
+    wasteland: '#BF360C', // Deep Burnt Orange
+    tundra: '#90A4AE',    // Blue Grey
+    ashlands: '#37474F',  // Dark Blue Grey
+    atharium_wastes: '#4A148C', // Deep Purple
 };
 
 export const FACTION_COLOR_HEX_MAP: Record<string, string> = {
-    'red-500': '#ef4444', 
-    'green-500': '#22c55e', 
-    'yellow-600': '#ca8a04',
-    'violet-500': '#8b5cf6', 
-    'blue-400': '#60a5fa', 
-    'teal-400': '#2dd4bf',
-    'gray-400': '#9ca3af', 
-    'orange-500': '#f97316', 
-    'gray-600': '#4b5563',
+    'red-500': '#D32F2F', // Industrial Red
+    'green-500': '#388E3C', // Nature Green
+    'yellow-600': '#FBC02D', // Holy Gold
+    'violet-500': '#7B1FA2', // Shadow Violet
+    'blue-400': '#1976D2', // Mountain Blue
+    'teal-400': '#009688', // Arcane Teal
+    'gray-400': '#616161', // Undead Grey
+    'orange-500': '#E64A19', // Scavenger Orange
+    'gray-600': '#424242', // Neutral
 };
 
 export const FACTION_COLOR_RGB_MAP: Record<string, string> = {
-    'red-500': '239, 68, 68', 
-    'green-500': '34, 197, 94', 
-    'yellow-600': '202, 138, 4',
-    'violet-500': '139, 92, 246', 
-    'blue-400': '96, 165, 250', 
-    'teal-400': '45, 212, 191',
-    'gray-400': '156, 163, 175', 
-    'orange-500': '249, 115, 22', 
-    'gray-600': '75, 85, 99',
+    'red-500': '211, 47, 47', 
+    'green-500': '56, 142, 60', 
+    'yellow-600': '251, 192, 45',
+    'violet-500': '123, 31, 162', 
+    'blue-400': '25, 118, 210', 
+    'teal-400': '0, 150, 136',
+    'gray-400': '97, 97, 97', 
+    'orange-500': '230, 74, 25', 
+    'gray-600': '66, 66, 66',
 };
 
 export const RARITY_COLORS: Record<Rarity, string> = {

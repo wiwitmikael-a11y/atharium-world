@@ -1,27 +1,24 @@
 
-import React from 'react';
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-// FIX: Corrected GamePhase type usage
-import type { GameState, TileData, GamePhase } from './types';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import type { GameState, TileData, GamePhase, GodPower } from './types';
 import { generateInitialGameState } from './services/worldGenerator';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useCameraControls } from './hooks/useCameraControls';
 import { useSoundManager } from './hooks/useSoundManager';
+import { useAssetLoader } from './hooks/useAssetLoader';
+import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE, FACTIONS_MAP, FACTION_COLOR_HEX_MAP, FACTION_COLOR_RGB_MAP, UNITS } from './constants';
+import { ASSET_PATHS } from './assets';
 import GameMap from './components/GameMap';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import EventTicker from './components/EventTicker';
-// FIX: Added imports for new color map constants
-import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE, FACTIONS_MAP, FACTION_COLOR_HEX_MAP, FACTION_COLOR_RGB_MAP } from './constants';
 import IntroVideo from './components/IntroVideo';
-import StartMenu from './components/StartMenu';
 import LoginScreen from './components/LoginScreen';
+import StartMenu from './components/StartMenu';
 import LoadingScreen from './components/LoadingScreen';
-import { useAssetLoader } from './hooks/useAssetLoader';
-import { ASSET_PATHS } from './assets';
 import HelpModal from './components/HelpModal';
 import SaveConfirmationDialog from './components/SaveConfirmationDialog';
-
+import GodPowersMenu from './components/GodPowersMenu';
 
 const TILE_WIDTH = 128;
 const TILE_VISUAL_HEIGHT = 64;
@@ -29,51 +26,48 @@ const TILE_VISUAL_HEIGHT = 64;
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [gameSpeed, setGameSpeed] = useState(1);
+  const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
+  
   const [isFollowing, setIsFollowing] = useState(false);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(true);
-  // FIX: Updated GamePhase to handle login and loading states.
-  const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
+  
   const [username, setUsername] = useState('');
   const [saveExists, setSaveExists] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isFirstTimeSession, setIsFirstTimeSession] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
-  
+
   const targetPanRef = useRef({ x: 0, y: 0 });
   const hasPannedToStartRef = useRef(false);
+  // Ref for dragging god powers
+  const isDraggingPowerRef = useRef(false);
   
   const initialPan = useMemo(() => ({ x: 0, y: 0 }), []);
-  
   const [camera, setCamera] = useState({ pan: initialPan, zoom: 0.5 });
-  const soundManager = useSoundManager(camera.zoom);
   
-  const mapContainerRef = useCameraControls(setCamera, camera.zoom, setIsFollowing, gamePhase === 'playing' && soundManager.isAudioInitialized);
+  const soundManager = useSoundManager(camera.zoom);
+  const isGameActive = gamePhase === 'playing';
+  const mapContainerRef = useCameraControls(setCamera, camera.zoom, setIsFollowing, isGameActive && soundManager.isAudioInitialized);
+  
+  useGameLoop(setGameState, isGameActive ? gameSpeed : 0, soundManager.isAudioInitialized ? soundManager : null);
 
-  useGameLoop(
-    setGameState, 
-    gamePhase === 'playing' ? gameSpeed : 0, 
-    soundManager.isAudioInitialized ? soundManager : null
-  );
+  const allAssetUrls = useMemo(() => Object.values(ASSET_PATHS), []);
+  const { isLoading: isGameLoading, progress, loadingMessage } = useAssetLoader(allAssetUrls, gamePhase === 'loading');
 
   const getSaveKey = useCallback(() => `atharium_save_${username}`, [username]);
 
-    useEffect(() => {
-        if (username) {
-            const savedGame = localStorage.getItem(getSaveKey());
-            setSaveExists(!!savedGame);
-        }
-    }, [username, getSaveKey]);
-
-    useEffect(() => {
-        const preventContextMenu = (e: MouseEvent) => e.preventDefault();
-        document.addEventListener('contextmenu', preventContextMenu);
-        return () => document.removeEventListener('contextmenu', preventContextMenu);
-    }, []);
-
-  const handleLogin = useCallback((name: string) => {
-    setUsername(name);
-    setGamePhase('menu');
-  }, []);
+  useEffect(() => {
+    if (username) {
+      const savedGame = localStorage.getItem(getSaveKey());
+      setSaveExists(!!savedGame);
+    }
+  }, [username, getSaveKey]);
+  
+  useEffect(() => {
+    if (gamePhase === 'loading' && !isGameLoading) {
+      setGamePhase('playing');
+    }
+  }, [gamePhase, isGameLoading]);
 
   const findUnitLocation = useCallback((unitId: number, world: TileData[][]) => {
     for (const row of world) {
@@ -93,197 +87,265 @@ const App: React.FC = () => {
     setCamera(prev => ({ ...prev, zoom: Math.max(0.8, prev.zoom), pan: { x: panX, y: panY }}));
   }, []);
   
+  const applyGodPower = useCallback((x: number, y: number) => {
+      setGameState(prev => {
+          if (!prev || !prev.activeGodPower) return prev;
+          if (prev.totalMintedAthar < prev.activeGodPower.cost) return prev;
+
+          const newState = { ...prev };
+          // Deep clone world row for mutation safety
+          const newWorld = [...newState.world];
+          newWorld[y] = [...newWorld[y]];
+          newState.world = newWorld;
+          
+          const tile = newState.world[y][x];
+          const power = prev.activeGodPower;
+          let effectApplied = false;
+
+          // Brush Size Logic (Simple radius)
+          const radius = power.brushSize || 0;
+          const tilesToAffect = [];
+          if (radius === 0) tilesToAffect.push(tile);
+          else {
+              for(let dy = -radius; dy <= radius; dy++) {
+                  for(let dx = -radius; dx <= radius; dx++) {
+                      const t = newState.world[y+dy]?.[x+dx];
+                      if(t) tilesToAffect.push(t);
+                  }
+              }
+          }
+
+          tilesToAffect.forEach(t => {
+              if (power.effectType === 'Damage') {
+                  if (t.units.length > 0) {
+                      t.units.forEach(u => u.hp -= 50);
+                      newState.floatingTexts.push({ id: Math.random(), text: "-50", x: t.x, y: t.y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
+                      effectApplied = true;
+                  }
+                  if (t.infrastructureId) {
+                      t.hp = (t.hp || 100) - 50;
+                      newState.floatingTexts.push({ id: Math.random(), text: "-50", x: t.x, y: t.y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
+                      effectApplied = true;
+                      if (power.id === 'Meteor') {
+                          t.infrastructureId = undefined; // Destroy instantly
+                          t.biomeId = 'ashlands'; // Crater effect
+                      }
+                  }
+                  if (power.id === 'Meteor') {
+                      t.biomeId = 'ashlands'; // Scorch earth
+                      effectApplied = true;
+                  }
+              } 
+              else if (power.effectType === 'Heal') {
+                  let healed = false;
+                  if (t.units.length > 0) { t.units.forEach(u => u.hp += 50); healed = true; }
+                  if (t.infrastructureId) { t.hp = (t.maxHp || 100); healed = true; }
+                  if (healed) {
+                      newState.floatingTexts.push({ id: Math.random(), text: "+50", x: t.x, y: t.y, color: "#00FF00", life: 1, velocity: {x:0, y:-0.1} });
+                      effectApplied = true;
+                  }
+              }
+              else if (power.effectType === 'Terraform' && power.payload) {
+                  if (t.biomeId !== power.payload) {
+                      t.biomeId = power.payload;
+                      effectApplied = true;
+                  }
+              }
+              else if (power.effectType === 'Resource' && !t.resourceId && !t.infrastructureId) {
+                  t.resourceId = 'resource_fluxbloom'; // Default random spawn for now
+                  newState.floatingTexts.push({ id: Math.random(), text: "Enriched!", x: t.x, y: t.y, color: "#00FFFF", life: 1, velocity: {x:0, y:-0.1} });
+                  effectApplied = true;
+              }
+              else if (power.effectType === 'Spawn' && power.payload) {
+                  if (!t.infrastructureId && t.units.length < 3) {
+                      // Hacky spawn logic, ideally move to worldGenerator utility
+                      const unitDef = UNITS.find(u => u.assetId.includes(power.payload!)) || UNITS[0];
+                      // Use a random neutral or hostile faction if specific one not found
+                      const factionId = 'neutral_hostile'; 
+                      
+                      t.units.push({
+                          id: newState.nextUnitId++, unitId: unitDef.id, factionId, hp: unitDef.hp,
+                          x: t.x, y: t.y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], 
+                          equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Spawned',
+                          visualGenes: { bodyColor: '#555', secondaryColor: '#f00', bodyType: 'Humanoid', headType: 'Standard', weaponType: 'Axe', weaponColor: '#aaa', sizeScale: 1 }
+                      });
+                      effectApplied = true;
+                  }
+              }
+          });
+
+          if (effectApplied) {
+              soundManager.playSFX(power.id === 'Meteor' ? 'sfx_build_complete' : 'sfx_build_start'); 
+              newState.totalMintedAthar -= power.cost;
+          }
+          return newState;
+      });
+  }, [soundManager]);
+
   const handleSelectTile = useCallback((x: number, y: number) => {
+    if (gameState?.activeGodPower) {
+        applyGodPower(x, y);
+        return;
+    }
+
     soundManager.playSFX('ui_click_subtle');
     setIsSidebarMinimized(false);
     setGameState(prev => {
         if (!prev) return null;
-        const clickedTile = prev.world[y][x];
-        if (clickedTile.units.length > 0) {
-            setIsFollowing(true); 
-            return {
-                ...prev,
-                selectedTile: { x, y },
-                selectedUnitId: clickedTile.units[0].id
-            };
-        } else {
-            setIsFollowing(false);
-            return {
-                ...prev,
-                selectedTile: { x, y },
-                selectedUnitId: null
-            };
-        }
+        const clickedTile = prev.world[y]?.[x];
+        if (!clickedTile) return prev;
+
+        const selectedUnitId = clickedTile.units.length > 0 ? clickedTile.units[0].id : null;
+        setIsFollowing(!!selectedUnitId);
+        return { ...prev, selectedTile: { x, y }, selectedUnitId };
     });
-  }, [soundManager]);
+  }, [soundManager, gameState?.activeGodPower, applyGodPower]);
   
+  // Mouse Move handler for "Painting" with God Powers
+  useEffect(() => {
+      const handlePointerMove = (e: MouseEvent) => {
+          if (isDraggingPowerRef.current && gameState?.activeGodPower) {
+              // This is complex because we need to raycast from screen to tile.
+              // For now, we'll rely on individual clicks or dragging logic inside GameMap if implemented.
+              // A simpler approach for V1 is "Click to Apply" multiple times.
+              // WorldBox painting requires continuous raycasting which is heavy for React state updates.
+              // We will stick to Click-based interaction for stability in this iteration.
+          }
+      };
+      window.addEventListener('mousemove', handlePointerMove);
+      return () => window.removeEventListener('mousemove', handlePointerMove);
+  }, [gameState?.activeGodPower]);
+
   const handleSelectUnit = useCallback((unitId: number | null) => {
-    setIsFollowing(unitId !== null);
+    setIsFollowing(!!unitId);
     setGameState(prev => {
         if (!prev) return null;
         const newSelectedTile = unitId ? findUnitLocation(unitId, prev.world) : prev.selectedTile;
-        return {
-            ...prev,
-            selectedTile: newSelectedTile,
-            selectedUnitId: unitId
-        };
+        return { ...prev, selectedTile: newSelectedTile, selectedUnitId: unitId };
     });
   }, [findUnitLocation]);
 
   const handleSelectFaction = useCallback((factionId: string) => {
     if (!gameState) return;
-
-    const settlements = gameState.world.flat()
-      .filter(t => t.ownerFactionId === factionId && t.infrastructureId?.startsWith('settlement_'));
-
+    const settlements = gameState.world.flat().filter(t => t.ownerFactionId === factionId && t.infrastructureId?.startsWith('settlement_'));
     if (settlements.length > 0) {
-      settlements.sort((a, b) => {
-        const tierA = INFRASTRUCTURE_MAP.get(a.infrastructureId!)?.tier || 0;
-        const tierB = INFRASTRUCTURE_MAP.get(b.infrastructureId!)?.tier || 0;
-        return tierB - tierA;
-      });
-
+      settlements.sort((a, b) => (INFRASTRUCTURE_MAP.get(b.infrastructureId!)?.tier || 0) - (INFRASTRUCTURE_MAP.get(a.infrastructureId!)?.tier || 0));
       const capital = settlements[0];
       handlePanToLocation({ x: capital.x, y: capital.y });
       handleSelectTile(capital.x, capital.y);
     }
   }, [gameState, handlePanToLocation, handleSelectTile]);
 
+  const handleSetGodPower = useCallback((power: GodPower | null) => {
+      setGameState(prev => prev ? ({ ...prev, activeGodPower: power }) : null);
+      if (power) soundManager.playUIHoverSFX();
+  }, [soundManager]);
 
-    const handleSaveGame = useCallback(() => {
-        if (gameState && username) {
-            try {
-                const gameStateString = JSON.stringify(gameState);
-                localStorage.setItem(getSaveKey(), gameStateString);
-                setSaveExists(true);
-                setShowSaveConfirm(true);
-                setTimeout(() => setShowSaveConfirm(false), 2000);
-            } catch (error) {
-                console.error("Failed to save game state:", error);
-            }
-        }
-    }, [gameState, username, getSaveKey]);
-
-    const handleNewGame = useCallback(() => {
-        const initialState = generateInitialGameState();
-        setGameState(initialState);
+  const handleLogin = useCallback((name: string) => {
+    setUsername(name);
+    setGamePhase('menu');
+  }, []);
+  
+  const handleNewGame = useCallback(() => {
+    soundManager.initializeAudio();
+    setGameState(generateInitialGameState());
+    setGamePhase('loading');
+    hasPannedToStartRef.current = false;
+    setIsFirstTimeSession(true);
+    setIsHelpOpen(true);
+  }, [soundManager]);
+  
+  const handleLoadGame = useCallback(() => {
+    if (!username) return;
+    const savedGameString = localStorage.getItem(getSaveKey());
+    if (savedGameString) {
+      try {
+        setGameState(JSON.parse(savedGameString));
         soundManager.initializeAudio();
-        // FIX: Set game phase to 'loading'
         setGamePhase('loading');
         hasPannedToStartRef.current = false;
-        setIsHelpOpen(true);
-        setIsFirstTimeSession(true);
-    }, [soundManager]);
+        setIsFirstTimeSession(false);
+      } catch (error) {
+        console.error("Failed to load game state, starting a new game:", error);
+        handleNewGame();
+      }
+    }
+  }, [username, getSaveKey, soundManager, handleNewGame]);
 
-    const handleLoadGame = useCallback(() => {
-        if (username) {
-            const savedGameString = localStorage.getItem(getSaveKey());
-            if (savedGameString) {
-                try {
-                    const savedGameState = JSON.parse(savedGameString);
-                    setGameState(savedGameState);
-                    soundManager.initializeAudio();
-                    // FIX: Set game phase to 'loading'
-                    setGamePhase('loading');
-                    hasPannedToStartRef.current = false;
-                    setIsFirstTimeSession(false);
-                } catch (error) {
-                    console.error("Failed to load game state, starting a new game:", error);
-                    handleNewGame();
-                }
-            }
-        }
-    }, [username, getSaveKey, soundManager, handleNewGame]);
-
+  const handleSaveGame = useCallback(() => {
+    if (gameState && username) {
+      try {
+        localStorage.setItem(getSaveKey(), JSON.stringify(gameState));
+        setSaveExists(true);
+        setShowSaveConfirm(true);
+        setTimeout(() => setShowSaveConfirm(false), 2000);
+      } catch (error) {
+        console.error("Failed to save game state:", error);
+      }
+    }
+  }, [gameState, username, getSaveKey]);
+  
   const handleResetWorld = useCallback(() => {
-    handleNewGame();
     setGameSpeed(1);
     setIsFollowing(false);
+    handleNewGame();
   }, [handleNewGame]);
 
   const handleExitToMenu = useCallback(() => {
-      soundManager.shutdown();
-      setGameState(null);
-      setGamePhase('menu');
-      setCamera({ pan: initialPan, zoom: 0.5 });
-      setIsFirstTimeSession(false);
+    soundManager.shutdown();
+    setGameState(null);
+    setGamePhase('menu');
+    setCamera({ pan: initialPan, zoom: 0.5 });
+    setIsFirstTimeSession(false);
   }, [soundManager, initialPan]);
-  
-  const allAssetUrls = useMemo(() => Object.values(ASSET_PATHS), []);
-  // FIX: Corrected comparison logic for game phase
-  const shouldLoadAssets = gamePhase === 'loading';
-  const { isLoading: isGameLoading, progress, loadingMessage } = useAssetLoader(allAssetUrls, shouldLoadAssets);
 
-  useEffect(() => {
-      // FIX: Corrected comparison logic for game phase
-      if (!isGameLoading && gamePhase === 'loading') {
-          setGamePhase('playing');
-      }
-  }, [isGameLoading, gamePhase]);
-
-  // Effect to set the dynamic faction color for UI elements
   useEffect(() => {
     const root = document.documentElement;
     let factionId: string | undefined;
-
-    if (gameState) {
-      if (gameState.selectedUnitId) {
-        const unit = gameState.world.flat().flatMap(t => t.units).find(u => u.id === gameState.selectedUnitId);
-        if (unit) {
-          factionId = unit.factionId;
-        }
-      } else if (gameState.selectedTile) {
-        const tile = gameState.world[gameState.selectedTile.y][gameState.selectedTile.x];
-        if (tile) {
-            if (tile.partOfInfrastructure) {
-                const rootTile = gameState.world[tile.partOfInfrastructure.rootY]?.[tile.partOfInfrastructure.rootX];
-                factionId = rootTile?.ownerFactionId;
-            } else {
-                factionId = tile.ownerFactionId;
-            }
+    if (gameState?.selectedTile) {
+      const { x, y } = gameState.selectedTile;
+      const tile = gameState.world[y]?.[x];
+      if (tile) {
+        if (tile.partOfInfrastructure) {
+          const rootTile = gameState.world[tile.partOfInfrastructure.rootY]?.[tile.partOfInfrastructure.rootX];
+          factionId = rootTile?.ownerFactionId;
+        } else {
+          factionId = tile.ownerFactionId;
         }
       }
     }
-
     const faction = factionId ? FACTIONS_MAP.get(factionId) : null;
     if (faction?.color) {
-      const hex = FACTION_COLOR_HEX_MAP[faction.color] || '#06b6d4';
-      const rgb = FACTION_COLOR_RGB_MAP[faction.color] || '6, 182, 212';
-      root.style.setProperty('--selection-glow-hex', hex);
-      root.style.setProperty('--selection-glow-rgb', rgb);
+      root.style.setProperty('--selection-glow-hex', FACTION_COLOR_HEX_MAP[faction.color] || '#06b6d4');
+      root.style.setProperty('--selection-glow-rgb', FACTION_COLOR_RGB_MAP[faction.color] || '6, 182, 212');
     } else {
-      // Reset to default cyan if no faction is selected or it has no color
       root.style.setProperty('--selection-glow-hex', '#06b6d4');
       root.style.setProperty('--selection-glow-rgb', '6, 182, 212');
     }
-  }, [gameState?.selectedTile, gameState?.selectedUnitId, gameState?.world]);
+  }, [gameState?.selectedTile, gameState?.world]);
 
-  // Effect for smooth camera follow
   useEffect(() => {
-    if (!isFollowing || !gameState || !gameState.selectedUnitId) return;
-
+    if (!isFollowing || !gameState?.selectedUnitId) return;
     let animationFrame: number;
     const smoothPan = () => {
         setGameState(currentGameState => {
-            if (!currentGameState || !currentGameState.selectedUnitId) return currentGameState;
+            if (!currentGameState?.selectedUnitId) return currentGameState;
             const unitLoc = findUnitLocation(currentGameState.selectedUnitId, currentGameState.world);
             if (unitLoc) {
-                const panX = -(unitLoc.x - unitLoc.y) * (TILE_WIDTH / 2);
-                const panY = -(unitLoc.x + unitLoc.y) * (TILE_VISUAL_HEIGHT / 2);
-                targetPanRef.current = { x: panX, y: panY };
+                targetPanRef.current = { 
+                    x: -(unitLoc.x - unitLoc.y) * (TILE_WIDTH / 2), 
+                    y: -(unitLoc.x + unitLoc.y) * (TILE_VISUAL_HEIGHT / 2)
+                };
             }
             return currentGameState;
         });
-
         setCamera(prev => {
             if (!isFollowing) return prev;
             const dx = targetPanRef.current.x - prev.pan.x;
             const dy = targetPanRef.current.y - prev.pan.y;
-            const easing = 0.1;
-            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
-                return { ...prev, pan: targetPanRef.current };
-            }
-            return { ...prev, pan: { x: prev.pan.x + dx * easing, y: prev.pan.y + dy * easing } };
+            return (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) 
+              ? { ...prev, pan: targetPanRef.current } 
+              : { ...prev, pan: { x: prev.pan.x + dx * 0.1, y: prev.pan.y + dy * 0.1 } };
         });
         animationFrame = requestAnimationFrame(smoothPan);
     };
@@ -291,104 +353,65 @@ const App: React.FC = () => {
     return () => cancelAnimationFrame(animationFrame);
   }, [isFollowing, gameState?.selectedUnitId, findUnitLocation]);
 
-  // Effect for initial pan to a random faction
   useEffect(() => {
-    if (gamePhase === 'playing' && gameState && !hasPannedToStartRef.current) {
-      const factionIds = Object.keys(gameState.factions);
+    if (isGameActive && gameState && !hasPannedToStartRef.current) {
+      const factionIds = Object.keys(gameState.factions).filter(id => !gameState.factions[id].isEliminated);
       if (factionIds.length > 0) {
         const randomFactionId = factionIds[Math.floor(Math.random() * factionIds.length)];
         const startTile = gameState.world.flat().find(t => t.ownerFactionId === randomFactionId && t.infrastructureId?.startsWith('settlement_'));
-        if (startTile) {
-          handlePanToLocation({ x: startTile.x, y: startTile.y });
-        }
+        if (startTile) handlePanToLocation(startTile);
       }
       hasPannedToStartRef.current = true;
     }
-  }, [gamePhase, gameState, handlePanToLocation]);
+  }, [isGameActive, gameState, handlePanToLocation]);
 
-  // Effect for dynamic ambiance sound
   useEffect(() => {
-    if (gamePhase !== 'playing' || !soundManager.isAudioInitialized) return;
-    
-    // Calculate center tile from camera pan
-    const pan = camera.pan;
-    const centerX = -pan.x / (TILE_WIDTH / 2);
-    const centerY = -pan.y / (TILE_VISUAL_HEIGHT / 2);
-    const tileY = Math.round((centerY - centerX) / 2);
-    const tileX = Math.round((centerY + centerX) / 2);
+    if (!isGameActive || !soundManager.isAudioInitialized || !gameState) return;
+    const panX = -camera.pan.x / (TILE_WIDTH / 2);
+    const panY = -camera.pan.y / (TILE_VISUAL_HEIGHT / 2);
+    const tileY = Math.round((panY - panX) / 2);
+    const tileX = Math.round((panY + panX) / 2);
 
     if (tileX >= 0 && tileX < WORLD_SIZE && tileY >= 0 && tileY < WORLD_SIZE) {
-        const biomeId = gameState?.world[tileY][tileX]?.biomeId;
+        const biomeId = gameState.world[tileY]?.[tileX]?.biomeId;
         const biome = BIOMES_MAP.get(biomeId || '');
         if (biome) {
-            if (biome.id === 'gloomwell' || biome.id === 'verdant') {
-                soundManager.playAmbiance('forest');
-            } else if (biome.id === 'wasteland' || biome.id === 'ashlands' || biome.id === 'atharium_wastes') {
-                soundManager.playAmbiance('wasteland');
-            } else {
-                 soundManager.playAmbiance('none');
-            }
+            const ambiance = (biome.id === 'gloomwell' || biome.id === 'verdant') ? 'forest' 
+                : (biome.id === 'wasteland' || biome.id === 'ashlands' || biome.id === 'atharium_wastes') ? 'wasteland' 
+                : 'none';
+            soundManager.playAmbiance(ambiance);
         }
     }
-  }, [camera.pan, gamePhase, soundManager, gameState?.world]);
+  }, [camera.pan, isGameActive, soundManager, gameState?.world]);
 
-
-  const renderGameContent = () => {
-    // FIX: Set phase to 'login' after intro.
-    if (gamePhase === 'intro') {
-      return <IntroVideo onFinish={() => setGamePhase('login')} />;
+  const renderGamePhase = () => {
+    switch (gamePhase) {
+      case 'intro': return <IntroVideo onFinish={() => setGamePhase('login')} />;
+      case 'login': return <LoginScreen onLogin={handleLogin} />;
+      case 'menu': return <StartMenu username={username} onNewGame={handleNewGame} onLoadGame={handleLoadGame} saveExists={saveExists} />;
+      case 'loading': return <LoadingScreen progress={progress} loadingMessage={loadingMessage} />;
+      case 'playing':
+        if (gameState && soundManager.isAudioInitialized) {
+          return (
+            <div className="w-full h-full flex">
+              <main ref={mapContainerRef} className={`flex-1 h-full relative ${gameState.activeGodPower ? 'cursor-crosshair' : 'cursor-default'}`}>
+                <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
+                <Header gameState={gameState} gameSpeed={gameSpeed} onSetSpeed={setGameSpeed} soundManager={soundManager} onResetWorld={handleResetWorld} onExitToMenu={handleExitToMenu} onSaveGame={handleSaveGame} onToggleHelp={() => setIsHelpOpen(p => !p)} onSelectFaction={handleSelectFaction} />
+                <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
+                <GodPowersMenu activePower={gameState.activeGodPower} onSelectPower={handleSetGodPower} currentAthar={gameState.totalMintedAthar} />
+                <SaveConfirmationDialog show={showSaveConfirm} />
+              </main>
+              <Sidebar selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y]?.[gameState.selectedTile.x] : null} gameState={gameState} onSelectUnit={handleSelectUnit} onPanToLocation={handlePanToLocation} soundManager={soundManager} isMinimized={isSidebarMinimized} onToggleMinimize={() => setIsSidebarMinimized(p => !p)} />
+              {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} isFirstTime={isFirstTimeSession} />}
+            </div>
+          );
+        }
+        return <LoadingScreen progress={0} loadingMessage="Initializing..." />; // Fallback
+      default: return null;
     }
-    // FIX: Corrected game phase check for login screen.
-    if (gamePhase === 'login') {
-        return <LoginScreen onLogin={handleLogin} />
-    }
-    if (gamePhase === 'menu') {
-      return <StartMenu username={username} onNewGame={handleNewGame} onLoadGame={handleLoadGame} saveExists={saveExists} />;
-    }
-    // FIX: Corrected game phase check for loading screen.
-    if (gamePhase === 'loading') {
-        return <LoadingScreen progress={progress} loadingMessage={loadingMessage} />;
-    }
-    if (gamePhase === 'playing' && gameState && soundManager.isAudioInitialized) {
-      return (
-        <div className="w-full h-full flex">
-          <main ref={mapContainerRef} className="flex-1 h-full relative">
-            <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
-            <Header
-              gameState={gameState}
-              gameSpeed={gameSpeed}
-              onSetSpeed={setGameSpeed}
-              soundManager={soundManager}
-              onResetWorld={handleResetWorld}
-              onExitToMenu={handleExitToMenu}
-              onSaveGame={handleSaveGame}
-              onToggleHelp={() => setIsHelpOpen(p => !p)}
-              onSelectFaction={handleSelectFaction}
-            />
-            <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
-            <SaveConfirmationDialog show={showSaveConfirm} />
-          </main>
-          <Sidebar
-            selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y][gameState.selectedTile.x] : null}
-            gameState={gameState}
-            onSelectUnit={handleSelectUnit}
-            onPanToLocation={handlePanToLocation}
-            soundManager={soundManager}
-            isMinimized={isSidebarMinimized}
-            onToggleMinimize={() => setIsSidebarMinimized(p => !p)}
-          />
-          {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} isFirstTime={isFirstTimeSession} />}
-        </div>
-      );
-    }
-    return null;
   };
 
-  return (
-    <div className="w-screen h-screen bg-gray-800 flex overflow-hidden">
-        {renderGameContent()}
-    </div>
-  );
+  return <div className="w-screen h-screen bg-gray-800 flex overflow-hidden">{renderGamePhase()}</div>;
 };
 
 export default App;
