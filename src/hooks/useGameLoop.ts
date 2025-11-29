@@ -1,15 +1,12 @@
 
 import { useEffect, useRef } from 'react';
-// FIX: Added GameEventType to imports and corrected type usage.
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType, ItemDefinition, Rarity } from '../types';
-// FIX: Added missing constants for new game mechanics.
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType, ItemDefinition, Rarity, WeatherType, FloatingText, GodPowerType } from '../types';
 import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCES, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL, INFRA_HP_COST_MULTIPLIER, INFRA_RESOURCE_DROP_PERCENT, LEVEL_MILESTONES, RESOURCE_SPAWN_CHANCES } from '../constants';
-import { ITEMS, ITEMS_MAP } from '../services/dataLoader';
+import { ITEMS } from '../services/dataLoader';
 import { getUnitStats } from '../utils/unit';
 
 const getFactionOwnedTiles = (world: TileData[][], factionId: string) => world.flat().filter(t => t.ownerFactionId === factionId);
 
-// FIX: Added 'type' parameter to align with new GameEvent structure.
 const addGameEvent = (newState: GameState, type: GameEventType, message: string, location: { x: number, y: number }) => {
     const newEvent: GameEvent = {
         id: newState.nextEventId,
@@ -19,11 +16,23 @@ const addGameEvent = (newState: GameState, type: GameEventType, message: string,
         location,
     };
     newState.nextEventId++;
-    newState.eventLog.unshift(newEvent); // Add to the beginning
-    if (newState.eventLog.length > 50) { // Keep log size manageable
+    newState.eventLog.unshift(newEvent);
+    if (newState.eventLog.length > 50) {
         newState.eventLog.pop();
     }
 };
+
+const addFloatingText = (newState: GameState, text: string, x: number, y: number, color: string) => {
+    const newText: FloatingText = {
+        id: Math.random(),
+        text,
+        x, y,
+        color,
+        life: 1.0,
+        velocity: { x: (Math.random() - 0.5) * 0.05, y: -0.05 - Math.random() * 0.05 }
+    };
+    newState.floatingTexts.push(newText);
+}
 
 const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType, filter?: any): number => {
     let modifier = 0;
@@ -70,10 +79,14 @@ const handleLevelUp = (unit: UnitInstance, newState: GameState) => {
         if (LEVEL_MILESTONES.includes(newLevel)) {
             const unitDef = UNITS_MAP.get(unit.unitId)!;
             addGameEvent(newState, GameEventType.LEVEL_MILESTONE, `${unitDef.name} has reached level ${newLevel}!`, {x: unit.x, y: unit.y});
+            addFloatingText(newState, "LEVEL UP!", unit.x, unit.y, "#FFD700");
         }
         unit.level = newLevel;
+        if (unit.visualGenes) {
+            unit.visualGenes.sizeScale = 1 + (newLevel * 0.05);
+        }
         const { maxHp } = getUnitStats(unit);
-        unit.hp = maxHp; // Heal to full on level up
+        unit.hp = maxHp;
     }
 };
 
@@ -103,20 +116,25 @@ const autoEquip = (unit: UnitInstance) => {
         }
 
         if (bestInventoryItem && bestInventoryItemScore > currentScore) {
-            // Unequip current item and add to inventory
             if (currentItem) {
                 unit.inventory.push(currentItem);
             }
-            // Equip new best item from inventory
             unit.equipment[slot] = bestInventoryItem;
-            // Remove it from inventory
             unit.inventory.splice(bestInventoryItemIndex, 1);
+            
+            if (slot === 'Weapon' && unit.visualGenes) {
+               if (bestInventoryItem.name.includes('Sword') || bestInventoryItem.name.includes('Blade')) unit.visualGenes.weaponType = 'Sword';
+               else if (bestInventoryItem.name.includes('Axe') || bestInventoryItem.name.includes('Cleaver')) unit.visualGenes.weaponType = 'Axe';
+               else if (bestInventoryItem.name.includes('Bow')) unit.visualGenes.weaponType = 'Bow';
+               else if (bestInventoryItem.name.includes('Staff') || bestInventoryItem.name.includes('Wand')) unit.visualGenes.weaponType = 'Staff';
+               
+               // unit.visualGenes.weaponColor = getRarityColorHex(bestInventoryItem.rarity);
+            }
         }
     }
 }
 
-
-const calculateTerrainBonus = (unit: UnitInstance, biome: Biome): { atkBonus: number, defBonus: number } => {
+const calculateTerrainBonus = (unit: UnitInstance, biome: Biome, weather: WeatherType): { atkBonus: number, defBonus: number } => {
     const factionInfo = FACTIONS_MAP.get(unit.factionId);
     const unitDef = UNITS_MAP.get(unit.unitId);
     if (!factionInfo || !unitDef || !biome.terrainEffects) {
@@ -126,6 +144,7 @@ const calculateTerrainBonus = (unit: UnitInstance, biome: Biome): { atkBonus: nu
     let atkBonus = 0;
     let defBonus = 0;
 
+    // Biome Effects
     for (const effect of biome.terrainEffects) {
         const appliesByArchetype = effect.appliesTo.factionArchetype && effect.appliesTo.factionArchetype === factionInfo.archetype;
         const appliesByRole = effect.appliesTo.unitRole && effect.appliesTo.unitRole === unitDef.role;
@@ -137,6 +156,19 @@ const calculateTerrainBonus = (unit: UnitInstance, biome: Biome): { atkBonus: nu
             }
         }
     }
+
+    // Weather Effects (Dynamic)
+    if (weather === 'Rain') {
+        if (unitDef.role === 'Ranged') atkBonus -= 0.2; // Hard to shoot in rain
+        if (factionInfo.archetype === 'Nature') defBonus += 0.1; // Plants love rain
+    } else if (weather === 'Storm') {
+        atkBonus -= 0.1;
+        defBonus -= 0.1;
+    } else if (weather === 'Fog') {
+        if (unitDef.role === 'Ranged') atkBonus -= 0.3;
+        if (factionInfo.archetype === 'Shadow') atkBonus += 0.2; // Shadow thrives in fog
+    }
+
     return { atkBonus, defBonus };
 };
 
@@ -166,6 +198,30 @@ const recalculateStorage = (factionState: FactionState, ownedTiles: TileData[]) 
         }
     }
 };
+
+const calculateEfficiency = (tile: TileData, world: TileData[][]): number => {
+    if (!tile.infrastructureId) return 1.0;
+    const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId);
+    if (!infra?.adjacencyBonuses) return 1.0;
+
+    let bonus = 0;
+    const neighbors = [
+        world[tile.y-1]?.[tile.x],
+        world[tile.y+1]?.[tile.x],
+        world[tile.y]?.[tile.x-1],
+        world[tile.y]?.[tile.x+1]
+    ].filter(Boolean);
+
+    for (const adj of infra.adjacencyBonuses) {
+        let count = 0;
+        for (const n of neighbors) {
+            if (adj.targetType === 'Biome' && n.biomeId === adj.targetId) count++;
+            if (adj.targetType === 'Infrastructure' && n.infrastructureId === adj.targetId) count++;
+        }
+        if (count > 0) bonus += adj.value; 
+    }
+    return 1.0 + bonus;
+}
 
 const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: TileData[][], tick: number, nextUnitId: number, soundManager: SoundManager, newState: GameState): number => {
     if (tick % 101 !== 0) return nextUnitId;
@@ -214,9 +270,18 @@ const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: T
                 
                 if (canAfford) {
                     Object.entries(modifiedUnitCost).forEach(([resId, amount]) => { faction.resources[resId] -= amount; });
+                    // Procedural Unit Generation with advanced visuals
                     world[settlement.y][settlement.x].units.push({
                         id: nextUnitId, unitId: unitToTrain.id, factionId: faction.id, hp: getInitialHp(unitToTrain, factionInfo),
                         x: settlement.x, y: settlement.y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Guarding',
+                        visualGenes: {
+                            bodyColor: FACTIONS_MAP.get(faction.id)?.color ? '#ef4444' : '#888', // Will be mapped by render
+                            headType: unitToTrain.role === 'Hero' ? 'Crown' : unitToTrain.role === 'Melee' ? 'Helm' : unitToTrain.role === 'Ranged' ? 'Hood' : 'Standard',
+                            weaponType: unitToTrain.role === 'Ranged' ? 'Bow' : unitToTrain.role === 'Support' ? 'Staff' : unitToTrain.role === 'Melee' ? (Math.random() > 0.5 ? 'Sword' : 'Axe') : 'None',
+                            weaponColor: '#bdc3c7',
+                            sizeScale: 1 + (Math.random() * 0.2 - 0.1), // Slight size variation
+                            accessory: Math.random() > 0.8 ? 'Cape' : 'None'
+                        }
                     });
                     return nextUnitId + 1;
                 }
@@ -226,7 +291,7 @@ const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: T
     return nextUnitId;
 };
 
-const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileData[][], tick: number, nextUnitId: number, newState: GameState): number => {
+const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileData[][], tick: number, nextUnitId: number): number => {
     if (tick % 201 !== 0) return nextUnitId;
 
     if (faction.leaderStatus === 'settled' && Math.random() < 0.1) {
@@ -239,7 +304,19 @@ const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileD
             faction.leaderStatus = 'adventuring';
             const adventureDuration = 500;
             
-            const leaderUnit: UnitInstance = { id: nextUnitId++, unitId: heroDef.id, factionId: faction.id, hp: getInitialHp(heroDef, factionInfo), x: settlement.x, y: settlement.y, adventureTicks: adventureDuration, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Adventuring' };
+            const leaderUnit: UnitInstance = { 
+                id: nextUnitId++, unitId: heroDef.id, factionId: faction.id, hp: getInitialHp(heroDef, factionInfo), 
+                x: settlement.x, y: settlement.y, adventureTicks: adventureDuration, level: 5, xp: 0, killCount: 0, 
+                combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Adventuring',
+                visualGenes: {
+                    bodyColor: '#ffd700', // Goldish
+                    headType: 'Crown',
+                    weaponType: 'Hammer',
+                    weaponColor: '#ffd700',
+                    sizeScale: 1.5,
+                    accessory: 'Cape'
+                }
+            };
             world[settlement.y][settlement.x].units.push(leaderUnit);
         }
     }
@@ -256,19 +333,86 @@ const runDiplomacyAI = (newState: GameState, faction: FactionState, factionId: s
         const otherFactionInfo = FACTIONS_MAP.get(otherFactionId);
         if (!otherFactionInfo) return;
         
-        relation.opinion -= 0.01;
+        if (relation.grievances && relation.grievances.length > 0) {
+            relation.opinion -= 0.5 * relation.grievances.length;
+        } else {
+            if (relation.opinion < 0) relation.opinion += 0.05;
+            if (relation.opinion > 0) relation.opinion -= 0.05;
+        }
+
         const warThreshold = -100 + factionInfo.personality.aggression * 6;
         const warChance = factionInfo.personality.aggression / 500;
+        
         if (relation.status === 'Neutral' && relation.opinion < warThreshold && Math.random() < warChance) {
            relation.status = 'War';
            allFactions[otherFactionId].diplomacy[factionId].status = 'War';
            relation.opinion = -100;
            allFactions[otherFactionId].diplomacy[factionId].opinion = -100;
            const factionTile = newState.world.flat().find(t => t.ownerFactionId === factionId);
-           if (factionTile) addGameEvent(newState, GameEventType.WAR_DECLARED, `${factionInfo.name} declared war on ${otherFactionInfo.name}!`, {x: factionTile.x, y: factionTile.y});
+           if (factionTile) addGameEvent(newState, GameEventType.WAR_DECLARED, `${factionInfo.name} has declared war on ${otherFactionInfo.name}! Revenge!`, {x: factionTile.x, y: factionTile.y});
         }
     }
 };
+
+const updateWeather = (newState: GameState) => {
+    if (newState.gameTime.tick % 500 === 0 && Math.random() < 0.3) {
+        const weathers: WeatherType[] = ['Clear', 'Rain', 'Storm', 'Fog', 'Heatwave'];
+        const newWeather = weathers[Math.floor(Math.random() * weathers.length)];
+        newState.weather = newWeather;
+        addGameEvent(newState, GameEventType.WEATHER_CHANGE, `Weather changed to ${newWeather}`, {x: -1, y: -1});
+    }
+}
+
+const updateBiomes = (world: TileData[][], tick: number, eventLog: GameEvent[]) => {
+    if (tick % 250 !== 0) return; 
+
+    const worldWidth = world.length;
+    const worldHeight = world[0].length;
+    const changes: {x: number, y: number, newBiome: string}[] = [];
+
+    for (let y = 0; y < worldHeight; y++) {
+        for (let x = 0; x < worldWidth; x++) {
+            const tile = world[y][x];
+            
+            if (tile.infrastructureId) {
+                const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId);
+                if (infra?.pollution && infra.pollution > 0) {
+                    tile.corruption = (tile.corruption || 0) + infra.pollution;
+                    [-1, 0, 1].forEach(dy => [-1, 0, 1].forEach(dx => {
+                        if (dx === 0 && dy === 0) return;
+                        const neighbor = world[y+dy]?.[x+dx];
+                        if (neighbor) neighbor.corruption = (neighbor.corruption || 0) + (infra.pollution! * 0.1);
+                    }));
+                }
+            }
+
+            if ((tile.corruption || 0) > 50 && tile.biomeId === 'verdant') {
+                changes.push({ x, y, newBiome: 'wasteland' });
+            } else if ((tile.corruption || 0) > 80 && tile.biomeId === 'wasteland') {
+                changes.push({ x, y, newBiome: 'ashlands' });
+            }
+
+            const biomeDef = BIOMES_MAP.get(tile.biomeId);
+            if (biomeDef?.spreadsTo && Math.random() < (biomeDef.spreadChance || 0)) {
+                const dx = Math.floor(Math.random() * 3) - 1;
+                const dy = Math.floor(Math.random() * 3) - 1;
+                if (dx !== 0 || dy !== 0) {
+                    const nx = x + dx; const ny = y + dy;
+                    if (nx >= 0 && nx < worldWidth && ny >= 0 && ny < worldHeight) {
+                        const neighbor = world[ny][nx];
+                        if (biomeDef.spreadsTo.includes(neighbor.biomeId) && !neighbor.infrastructureId && (neighbor.corruption || 0) < 20) {
+                            changes.push({ x: nx, y: ny, newBiome: tile.biomeId });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    changes.forEach(c => {
+        world[c.y][c.x].biomeId = c.newBiome;
+    });
+}
 
 
 const processGameTick = (prevState: GameState, soundManager: SoundManager): GameState => {
@@ -278,10 +422,25 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
     newState.gameTime.tick++;
     if (newState.gameTime.tick % TICK_PER_YEAR === 0) newState.gameTime.year++;
+    
+    // Update Time of Day (24hr cycle over 1000 ticks)
+    newState.gameTime.timeOfDay = (newState.gameTime.tick % 1000) / 1000 * 24;
+
     for (const key in newState.attackFlashes) {
         if (newState.gameTime.tick - newState.attackFlashes[key] > 5) delete newState.attackFlashes[key];
     }
     newState.dyingUnits = newState.dyingUnits.filter(u => newState.gameTime.tick - u.deathTick < 25);
+    
+    // Update Floating Texts
+    newState.floatingTexts = newState.floatingTexts.map(ft => ({
+        ...ft,
+        life: ft.life - 0.02,
+        x: ft.x + ft.velocity.x,
+        y: ft.y + ft.velocity.y
+    })).filter(ft => ft.life > 0);
+
+    updateWeather(newState);
+    updateBiomes(newState.world, newState.gameTime.tick, newState.eventLog);
 
     if (newState.gameTime.tick % 50 === 0) {
         for (const factionId in newState.factions) {
@@ -289,9 +448,11 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
             if (faction.isEliminated) continue;
             const factionInfo = FACTIONS_MAP.get(factionId)!;
             const ownedTiles = getFactionOwnedTiles(newState.world, factionId);
-            if (ownedTiles.length === 0) {
-                faction.isEliminated = true;
-                addGameEvent(newState, GameEventType.FACTION_ELIMINATED, `${factionInfo.name} has been eliminated!`, {x: -1, y: -1});
+            if (ownedTiles.length === 0 && factionId !== 'neutral_hostile') {
+                if (!faction.isEliminated) {
+                    faction.isEliminated = true;
+                    addGameEvent(newState, GameEventType.FACTION_ELIMINATED, `${FACTIONS_MAP.get(factionId)!.name} has been eliminated!`, {x: -1, y: -1});
+                }
                 continue;
             }
             const settlementTiles = ownedTiles.filter(t => t.infrastructureId?.startsWith('settlement_'));
@@ -311,13 +472,21 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
     }
 
     const DEPLETION_CHANCE = 0.05;
+    
     for (let y = 0; y < worldHeight; y++) {
         for (let x = 0; x < worldWidth; x++) {
             const tile = newState.world[y][x];
+            
+            if (newState.gameTime.tick % 100 === 0 && tile.infrastructureId) {
+                tile.efficiency = calculateEfficiency(tile, newState.world);
+            }
+
             if (tile.ownerFactionId && tile.infrastructureId) {
                 const owner = newState.factions[tile.ownerFactionId];
                 const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId);
                 const ownerInfo = FACTIONS_MAP.get(tile.ownerFactionId);
+                const efficiency = tile.efficiency || 1.0;
+
                 if (owner && infra && ownerInfo) {
                     const processResource = (resId: string, amount: number) => {
                         const resDef = RESOURCES_MAP.get(resId)!;
@@ -329,7 +498,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                         }
                     };
                     if (infra.consumes && infra.produces) {
-                        // FIX: Updated logic to handle array of consumables
                         if (infra.consumes.every(c => (owner.resources[c.resourceId] || 0) >= c.amount)) {
                              infra.consumes.forEach(c => {
                                  const resDef = RESOURCES_MAP.get(c.resourceId)!;
@@ -338,17 +506,15 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                              });
                             const prodDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
                             const bonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: prodDef.tier });
-                            processResource(infra.produces.resourceId, infra.produces.amount * (1 + bonus));
-                            // FIX: Added logic to track total minted Athar
+                            processResource(infra.produces.resourceId, infra.produces.amount * (1 + bonus) * efficiency);
                             if (infra.id === 'infra_arcane_enchanter') newState.totalMintedAthar += infra.produces.amount * (1 + bonus);
                         }
                     } else if (infra.produces && infra.requiresResourceId === tile.resourceId) {
                         const resDef = RESOURCES_MAP.get(infra.produces.resourceId)!;
                         const bonus = getFactionModifier(ownerInfo, 'PRODUCTION_MOD', { resourceTier: resDef.tier });
-                        processResource(infra.produces.resourceId, infra.produces.amount * (1 + bonus));
+                        processResource(infra.produces.resourceId, infra.produces.amount * (1 + bonus) * efficiency);
                         if (Math.random() < DEPLETION_CHANCE) {
                             const resourceDef = RESOURCES_MAP.get(tile.resourceId!);
-                            // FIX: Added resource depletion and respawn logic
                             if (resourceDef?.respawnTime) tile.resourceCooldown = newState.gameTime.tick + resourceDef.respawnTime;
                             tile.resourceId = undefined;
                         }
@@ -372,7 +538,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
         if (newState.gameTime.tick % 251 === 0) recalculateStorage(faction, ownedTiles);
         newState.nextUnitId = runManagementAI(faction, ownedTiles, newState.world, newState.gameTime.tick, newState.nextUnitId, soundManager, newState);
-        newState.nextUnitId = runLeaderAI(faction, ownedTiles, newState.world, newState.gameTime.tick, newState.nextUnitId, newState);
+        newState.nextUnitId = runLeaderAI(faction, ownedTiles, newState.world, newState.gameTime.tick, newState.nextUnitId);
         if (newState.gameTime.tick % 151 === 0) runDiplomacyAI(newState, faction, factionId, newState.factions);
 
         if (newState.gameTime.tick > 1 && newState.gameTime.tick % 50 === 0) {
@@ -389,29 +555,11 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
             let buildChoice: { tile: TileData, infra: InfraType } | null = null;
             const infraCostMod = getFactionModifier(factionInfo, 'INFRASTRUCTURE_COST_MOD');
             
-            const neededProcessingInfra = INFRASTRUCTURE.find(i => {
-                if (!i.consumes || i.consumes.length === 0) return false;
-                const inputRes = i.consumes[0].resourceId;
-                const outputRes = i.produces!.resourceId;
-                return (faction.resources[inputRes] || 0) > 100 && (faction.resources[outputRes] || 0) < 20;
-            });
-            if (neededProcessingInfra) {
-                const site = buildSites.find(s => !s.resourceId && !s.worldEventId);
-                if (site) buildChoice = { tile: site, infra: neededProcessingInfra };
-            }
-
-            if (!buildChoice) {
-                const extractorCandidates = buildSites.map(s => s.resourceId ? { tile: s, infra: INFRASTRUCTURE.find(i => i.requiresResourceId === s.resourceId) } : null)
+             const extractorCandidates = buildSites.map(s => s.resourceId ? { tile: s, infra: INFRASTRUCTURE.find(i => i.requiresResourceId === s.resourceId) } : null)
                     .filter((c): c is { tile: TileData; infra: InfraType } => c !== null && c.infra !== undefined);
-                for (const candidate of extractorCandidates) {
-                    if (candidate.infra.produces) {
-                        const resDef = RESOURCES_MAP.get(candidate.infra.produces.resourceId)!;
-                        if (faction.storage[resDef.tier].current < faction.storage[resDef.tier].capacity) {
-                            buildChoice = candidate;
-                            break;
-                        }
-                    }
-                }
+            
+            if (extractorCandidates.length > 0) {
+                buildChoice = extractorCandidates[0];
             }
             
             if (buildChoice) {
@@ -446,7 +594,10 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
         const unitDef = UNITS_MAP.get(unit.unitId)!;
         if (unitDef.traitIds?.some(id => UNIT_TRAITS_MAP.get(id)?.effects.some(e => e.type === 'HP_REGEN'))) {
             const { maxHp } = getUnitStats(unit);
-            if (unit.hp < maxHp) unit.hp = Math.min(maxHp, unit.hp + 0.1);
+            if (unit.hp < maxHp) {
+                unit.hp = Math.min(maxHp, unit.hp + 0.1);
+                // addFloatingText(newState, "+HP", unit.x, unit.y, "#00FF00"); // Spammy
+            }
         }
     }
 
@@ -469,12 +620,12 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                 if (owner && UNITS_MAP.get(unit.unitId)?.role === 'Hero') {
                     owner.leaderStatus = 'settled';
                     if (Math.random() < 0.33) {
-                        // FIX: Logic was comparing EquipmentSlot to 'None'.
                         const loreItems = ITEMS.filter(item => item.slot === 'None');
                         if (loreItems.length > 0) {
                             const foundItem = loreItems[Math.floor(Math.random() * loreItems.length)];
                             unit.inventory.push(foundItem);
                             addGameEvent(newState, GameEventType.LOOT, `${owner.leader.name} found a ${foundItem.name}!`, { x: unit.x, y: unit.y });
+                            addFloatingText(newState, "LOOT!", unit.x, unit.y, "#FFFF00");
                         }
                     }
                 }
@@ -487,40 +638,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
         let moveX = 0, moveY = 0, targetFound = false;
         const factionInfo = FACTIONS_MAP.get(unit.factionId)!;
         const unitDef = UNITS_MAP.get(unit.unitId)!;
-
-        if (unitDef.role === 'Worker' && unit.currentActivity === 'Guarding') {
-            let nearestExtractor: {x:number, y:number} | null = null;
-            let minDistance = 4; // search radius
-            for (let dy = -minDistance; dy <= minDistance; dy++) {
-                for (let dx = -minDistance; dx <= minDistance; dx++) {
-                    const nx = unit.x + dx;
-                    const ny = unit.y + dy;
-                    if (nx >= 0 && nx < worldWidth && ny >= 0 && ny < worldHeight) {
-                        const tile = newState.world[ny][nx];
-                        if (tile.ownerFactionId === unit.factionId && tile.infrastructureId) {
-                            const infra = INFRASTRUCTURE_MAP.get(tile.infrastructureId);
-                            if (infra?.produces && RESOURCES_MAP.get(infra.produces.resourceId)?.tier === 'Raw') {
-                                const dist = Math.hypot(dx, dy);
-                                if (dist < minDistance) {
-                                    minDistance = dist;
-                                    nearestExtractor = {x: nx, y: ny};
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (nearestExtractor) {
-                targetFound = true;
-                if (minDistance <= 1.5) { // Is adjacent
-                    unit.currentActivity = 'Harvesting';
-                } else {
-                    unit.currentActivity = 'Harvesting'; // Simplified for now
-                    moveX = Math.sign(nearestExtractor.x - unit.x);
-                    moveY = Math.sign(nearestExtractor.y - unit.y);
-                }
-            }
-        }
 
         const isAggressive = factionInfo.personality.aggression > 6 && !unit.adventureTicks;
         if (!targetFound && isAggressive) {
@@ -535,11 +652,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                     const d = Math.hypot(unit.x - enemy.x, unit.y - enemy.y);
                     if (d < minDistance) { minDistance = d; nearestEnemy = enemy; }
                 }
-                 const enemyTiles = newState.world.flat().filter(t => t.ownerFactionId === enemyFactionId && t.infrastructureId);
-                 for (const tile of enemyTiles) {
-                    const d = Math.hypot(unit.x - tile.x, unit.y - tile.y);
-                     if (d < minDistance) { minDistance = d; nearestEnemy = tile; }
-                 }
             }
             if (nearestEnemy) {
                 unit.currentActivity = 'Advancing';
@@ -571,32 +683,29 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                     const enemyUnitDef = UNITS_MAP.get(enemyUnit.unitId)!;
                     const attackerStats = getUnitStats(unit);
                     const defenderStats = getUnitStats(enemyUnit);
+                    
+                    const attackBiome = BIOMES_MAP.get(newState.world[unit.y][unit.x].biomeId)!;
+                    const defendBiome = BIOMES_MAP.get(targetTile.biomeId)!;
+                    const attackTerrain = calculateTerrainBonus(unit, attackBiome, newState.weather);
+                    const defendTerrain = calculateTerrainBonus(enemyUnit, defendBiome, newState.weather);
 
-                    const attackerTraits = unitDef.traitIds?.map(id => UNIT_TRAITS_MAP.get(id)!).filter(Boolean) || [];
-                    const defenderTraits = enemyUnitDef.traitIds?.map(id => UNIT_TRAITS_MAP.get(id)!).filter(Boolean) || [];
-                    const attackerTerrain = calculateTerrainBonus(unit, BIOMES_MAP.get(newState.world[unit.y][unit.x].biomeId)!);
-                    const defenderTerrain = calculateTerrainBonus(enemyUnit, BIOMES_MAP.get(targetTile.biomeId)!);
+                    const dmg = Math.max(1, (attackerStats.attack * (1+attackTerrain.atkBonus)) - (defenderStats.defense * (1+defendTerrain.defBonus)));
+                    enemyUnit.hp -= dmg;
+                    addFloatingText(newState, `-${Math.round(dmg)}`, enemyUnit.x, enemyUnit.y, "#FF4444");
 
-                    let damageToDefender = attackerStats.attack * (1 + attackerTerrain.atkBonus);
-                    attackerTraits.forEach(t => t.effects.forEach(e => {
-                        if (e.type === 'BONUS_ATTACK_VS_TRAIT' && enemyUnitDef.traitIds?.includes(e.traitId!)) damageToDefender *= 1 + (e.value || 0);
-                        if (e.type === 'CRITICAL_CHANCE' && Math.random() < (e.chance || 0)) damageToDefender *= (e.multiplier || 1);
-                    }));
-                    damageToDefender = Math.max(1, damageToDefender - defenderStats.defense);
-
-                    let damageToAttacker = defenderStats.attack * (1 + defenderTerrain.atkBonus);
-                    damageToAttacker = Math.max(1, damageToAttacker - attackerStats.defense);
-
-                    const attackerStrikesFirst = attackerTraits.some(t => t.effects.some(e => e.type === 'FIRST_STRIKE' && Math.random() < (e.chance || 0)));
-                    if (attackerStrikesFirst) {
-                        enemyUnit.hp -= Math.max(1, damageToDefender);
-                        if (enemyUnit.hp > 0) unit.hp -= Math.max(1, damageToAttacker);
-                    } else {
-                        enemyUnit.hp -= Math.max(1, damageToDefender);
-                        unit.hp -= Math.max(1, damageToAttacker);
-                    }
+                    const retDmg = Math.max(1, (defenderStats.attack * (1+defendTerrain.atkBonus)) - (attackerStats.defense * (1+attackTerrain.defBonus)));
+                    unit.hp -= retDmg;
+                    addFloatingText(newState, `-${Math.round(retDmg)}`, unit.x, unit.y, "#FF4444");
 
                     if (enemyUnit.hp <= 0) {
+                        if (enemyUnitDef.role === 'Hero') {
+                            const enemyFaction = newState.factions[enemyUnit.factionId];
+                            if (enemyFaction) {
+                                enemyFaction.diplomacy[unit.factionId].grievances = [...(enemyFaction.diplomacy[unit.factionId].grievances || []), `Killed ${enemyUnitDef.name}`];
+                                addGameEvent(newState, GameEventType.BATTLE, `${enemyUnitDef.name} has fallen!`, {x: newX, y: newY});
+                            }
+                        }
+
                         soundManager.playSFX('sfx_unit_die');
                         const deadUnit = targetTile.units.shift()!;
                         newState.dyingUnits.push({ ...deadUnit, deathTick: newState.gameTime.tick });
@@ -608,65 +717,11 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
                         unit.killCount++;
                         unit.xp += 10 + (enemyUnitDef.tier * 5);
-                        if(UNITS_MAP.get(unit.unitId)?.role === 'Hero') unit.xp += 10;
                         handleLevelUp(unit, newState);
                     }
-                    if (unit.hp <= 0) {
-                        soundManager.playSFX('sfx_unit_die');
-                        const deadUnit = newState.world[unit.y][unit.x].units.find(u => u.id === unit.id)!;
-                        newState.world[unit.y][unit.x].units = newState.world[unit.y][unit.x].units.filter(u => u.id !== unit.id);
-                        newState.dyingUnits.push({ ...deadUnit, deathTick: newState.gameTime.tick });
-                        
-                        const lootToDrop = [...deadUnit.inventory, ...Object.values(deadUnit.equipment).filter(Boolean) as ItemDefinition[]];
-                        if(lootToDrop.length > 0) {
-                            const tileForLoot = newState.world[unit.y][unit.x];
-                            tileForLoot.loot = [...(tileForLoot.loot || []), ...lootToDrop];
-                        }
-
-                        enemyUnit.killCount++;
-                        enemyUnit.xp += 10 + (unitDef.tier * 5);
-                        handleLevelUp(enemyUnit, newState);
-                    }
                  }
-            } else if (targetTile.ownerFactionId && targetTile.ownerFactionId !== unit.factionId) { // Attack infrastructure
-                const relation = newState.factions[unit.factionId]?.diplomacy[targetTile.ownerFactionId];
-                if (relation?.status === 'War') {
-                    newState.attackFlashes[unit.id] = newState.gameTime.tick;
-                    if (targetTile.hp && targetTile.hp > 0) {
-                        const attackerStats = getUnitStats(unit);
-                        targetTile.hp -= Math.max(1, attackerStats.attack);
-                        
-                        if (targetTile.hp <= 0) {
-                            const destroyedInfra = INFRASTRUCTURE_MAP.get(targetTile.infrastructureId!)!;
-                            addGameEvent(newState, GameEventType.BATTLE, `${unitDef.name} destroyed a ${destroyedInfra.name}!`, {x: newX, y: newY});
-                            
-                            const resourceCache: Record<string, number> = {};
-                            const costs = destroyedInfra.upgradeCost || destroyedInfra.cost;
-                            for(const [resId, amount] of Object.entries(costs)) {
-                                resourceCache[resId] = Math.floor(amount * INFRA_RESOURCE_DROP_PERCENT);
-                            }
-                            targetTile.resourceCache = resourceCache;
-
-                            targetTile.infrastructureId = undefined;
-                            targetTile.ownerFactionId = undefined;
-                            targetTile.hp = undefined;
-                            targetTile.maxHp = undefined;
-
-                            if (destroyedInfra.multiTile) {
-                                for(let dy=0; dy < destroyedInfra.multiTile.height; dy++) {
-                                    for(let dx=0; dx < destroyedInfra.multiTile.width; dx++) {
-                                        if (dx === 0 && dy === 0) continue;
-                                        newState.world[newY+dy][newX+dx].partOfInfrastructure = undefined;
-                                    }
-                                }
-                            }
-
-                            unit.xp += destroyedInfra.xpGain || 10;
-                            handleLevelUp(unit, newState);
-                        }
-                    }
-                }
-            } else if (targetTile.units.length === 0) {
+            } 
+            else if (targetTile.units.length === 0) {
                  if (Math.random() <= 1 / BIOMES_MAP.get(targetTile.biomeId)!.moveCost) {
                     const currentTile = newState.world[unit.y][unit.x];
                     const unitIndex = currentTile.units.findIndex(u => u.id === unit.id);
@@ -680,15 +735,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
                             targetTile.loot = [];
                             autoEquip(movedUnit);
                             addGameEvent(newState, GameEventType.LOOT, `${unitDef.name} collected loot!`, {x: newX, y: newY});
-                        }
-                        if(targetTile.resourceCache && unitDef.role === 'Worker') {
-                            const owner = newState.factions[movedUnit.factionId];
-                            for(const [resId, amount] of Object.entries(targetTile.resourceCache)) {
-                                // FIX: Ensured safe addition to resources.
-                                owner.resources[resId] = (owner.resources[resId] || 0) + Number(amount);
-                            }
-                            recalculateStorage(owner, getFactionOwnedTiles(newState.world, owner.id));
-                            targetTile.resourceCache = undefined;
+                            addFloatingText(newState, "LOOT!", newX, newY, "#FFFF00");
                         }
                     }
                  }
@@ -698,7 +745,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
     }
     
     if (newState.gameTime.tick % 101 === 0) {
-      // FIX: Corrected logic for resource respawning
       const rawRes = RESOURCES.filter(r => r.tier === 'Raw' && r.respawnTime);
       for (let y = 0; y < worldHeight; y++) {
         for (let x = 0; x < worldWidth; x++) {
@@ -715,25 +761,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
           }
         }
       }
-    }
-
-    if (newState.gameTime.tick > 1 && newState.gameTime.tick % 400 === 0) {
-        const hostileDefs = UNITS.filter(u => u.factionId === 'neutral_hostile');
-        if(hostileDefs.length > 0) {
-            let placed = false, attempts = 0;
-            while(!placed && attempts < 100) {
-                const x = Math.floor(Math.random() * worldWidth);
-                const y = Math.floor(Math.random() * worldHeight);
-                const tile = newState.world[y][x];
-                if(!tile.ownerFactionId && tile.units.length === 0) {
-                    const unitDef = hostileDefs[Math.floor(Math.random() * hostileDefs.length)];
-                    const factionInfo = FACTIONS_MAP.get('neutral_hostile')!;
-                    tile.units.push({id: newState.nextUnitId++, unitId: unitDef.id, factionId: 'neutral_hostile', hp: getInitialHp(unitDef, factionInfo), x, y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Guarding'});
-                    placed = true;
-                }
-                attempts++;
-            }
-        }
     }
 
     return newState;

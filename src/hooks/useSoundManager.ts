@@ -5,7 +5,6 @@ import { SOUND_PATHS } from '../sounds';
 const BGM_VOLUME = 0.3;
 const MAX_SFX_VOLUME = 0.5;
 const MAX_AMBIANCE_VOLUME = 0.4;
-const FADE_TIME = 1.0;
 
 export const useSoundManager = (zoom: number) => {
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -63,7 +62,6 @@ export const useSoundManager = (zoom: number) => {
 
     setIsInitialized(true);
 
-    // Asynchronously load sounds
     (async () => {
       const promises = Object.entries(SOUND_PATHS).map(async ([id, path]) => {
         try {
@@ -116,8 +114,8 @@ export const useSoundManager = (zoom: number) => {
   }, [isSfxEnabled]);
 
   const playAmbiance = useCallback((ambianceType: string) => {
-    // This logic is complex and would be rebuilt here with cross-fading...
-    // For now, let's ensure it's safe but simple.
+      // Placeholder for future ambiance logic
+      currentAmbianceRef.current = ambianceType; 
   }, []);
   
   const lastHoverTimeRef = useRef(0);

@@ -1,8 +1,7 @@
 
 import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP, RESOURCE_SPAWN_CHANCES, STARTING_YEAR, INFRA_HP_COST_MULTIPLIER } from '../constants';
-import type { TileData, GameState, FactionState, Faction, UnitDefinition, ResourceTier, UnitInstance, ItemDefinition, Infrastructure } from '../types';
+import type { TileData, GameState, FactionState, Faction, UnitDefinition, ResourceTier, UnitInstance, ItemDefinition } from '../types';
 import { ITEMS, ITEMS_MAP } from './dataLoader';
-import { getFactionModifier } from '../utils/faction';
 import { getUnitStats } from '../utils/unit';
 
 const getRandomInt = (min: number, max: number): number => {
@@ -28,8 +27,14 @@ const createUnit = (id: number, unitDef: UnitDefinition, factionInfo: Faction, x
         id, unitId: unitDef.id, factionId: factionInfo.id, hp: 0, x, y,
         level: 1, xp: 0, killCount: 0, combatLog: [],
         inventory: [], equipment, currentActivity: 'Guarding',
+        visualGenes: {
+            bodyColor: FACTIONS_MAP.get(factionInfo.id)?.color ? '#ef4444' : '#888',
+            headType: unitDef.role === 'Hero' ? 'Crown' : unitDef.role === 'Melee' ? 'Helm' : 'Standard',
+            weaponType: unitDef.role === 'Ranged' ? 'Bow' : unitDef.role === 'Support' ? 'Staff' : 'Sword',
+            weaponColor: '#bdc3c7',
+            sizeScale: 1
+        }
     };
-    // Set HP based on stats with equipment
     newUnit.hp = getUnitStats(newUnit).maxHp;
     return newUnit;
 }
@@ -147,7 +152,7 @@ const placeFactions = (world: TileData[][], factions: Record<string, FactionStat
         const startY = Math.round(center.y + radius * Math.sin(angle));
 
         let placed = false;
-        for (let r = 0; r < 15 && !placed; r++) { // Search in expanding radius
+        for (let r = 0; r < 15 && !placed; r++) {
             for (let dy = -r; dy <= r; dy++) {
                 if(placed) break;
                 for (let dx = -r; dx <= r; dx++) {
@@ -160,7 +165,6 @@ const placeFactions = (world: TileData[][], factions: Record<string, FactionStat
                     const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet')!;
                     const {width, height} = hamletDef.multiTile!;
                     
-                    // Check if area is valid and empty
                     let areaIsValid = true;
                     for(let my=0; my < height; my++) {
                         for(let mx=0; mx < width; mx++) {
@@ -177,7 +181,6 @@ const placeFactions = (world: TileData[][], factions: Record<string, FactionStat
                         const rootTile = world[y][x];
                         const maxHp = (Object.values(hamletDef.upgradeCost!).reduce((s, a) => s + a, 0)) * INFRA_HP_COST_MULTIPLIER;
                         
-                        // Place structure and link parts
                         rootTile.ownerFactionId = factionId;
                         rootTile.infrastructureId = hamletDef.id;
                         rootTile.hp = maxHp;
@@ -189,7 +192,6 @@ const placeFactions = (world: TileData[][], factions: Record<string, FactionStat
                             }
                         }
                         
-                        // Spawn initial units
                         const workerDef = UNITS.find(u => u.factionId === factionId && u.role === 'Worker');
                         if (workerDef) {
                             rootTile.units.push(createUnit(unitIdCounter++, workerDef, factionInfo, x, y));
@@ -238,11 +240,10 @@ export function generateInitialGameState(): GameState {
   placeWorldEvents(world);
   placeInitialLoot(world);
 
-  // Initialize diplomatic relations with natural enmity
   const factionIds = Object.keys(factionStates);
   const naturalEnemies: Record<string, { nemesis: string, opinion: number }> = {
-      'f1': { nemesis: 'f2', opinion: -25 }, // Industrial vs Nature
-      'f3': { nemesis: 'f7', opinion: -50 }, // Holy vs Undead
+      'f1': { nemesis: 'f2', opinion: -25 },
+      'f3': { nemesis: 'f7', opinion: -50 },
   };
   for (const fA of factionIds) {
     for (const fB of factionIds) {
@@ -251,7 +252,7 @@ export function generateInitialGameState(): GameState {
         if (naturalEnemies[fA]?.nemesis === fB || naturalEnemies[fB]?.nemesis === fA) {
             initialOpinion = naturalEnemies[fA]?.opinion || naturalEnemies[fB]?.opinion || 0;
         }
-        factionStates[fA].diplomacy[fB] = { status: 'Neutral', opinion: initialOpinion };
+        factionStates[fA].diplomacy[fB] = { status: 'Neutral', opinion: initialOpinion, grievances: [] };
       }
     }
   }
@@ -259,7 +260,8 @@ export function generateInitialGameState(): GameState {
   return { 
       world, 
       factions: factionStates, 
-      gameTime: { tick: 0, year: STARTING_YEAR, epoch: 'era_of_awakening' }, 
+      gameTime: { tick: 0, year: STARTING_YEAR, epoch: 'era_of_awakening', timeOfDay: 12 }, 
+      weather: 'Clear',
       selectedTile: null, 
       selectedUnitId: null, 
       nextUnitId, 
@@ -267,6 +269,8 @@ export function generateInitialGameState(): GameState {
       dyingUnits: [], 
       eventLog: [], 
       nextEventId: 0, 
-      totalMintedAthar: 0 
+      totalMintedAthar: 0,
+      floatingTexts: [],
+      activeGodPower: null
     };
 }

@@ -1,6 +1,6 @@
 
 
-import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Rarity, UnitRole } from './types';
+import type { Trait, Character, Faction, Biome, Resource, UnitDefinition, Infrastructure, TechNode, WorldEvent, UnitTrait, Rarity } from './types';
 
 //
 // GAMEPLAY CONFIGURATION
@@ -78,14 +78,14 @@ export const FACTIONS: readonly Faction[] = Object.freeze([
 // BIOMES & WORLD
 //
 export const BIOMES: readonly Biome[] = Object.freeze([
-    { id: 'gloomwell', name: 'Gloomwell Forest', moveCost: 2, terrainEffects: [
+    { id: 'gloomwell', name: 'Gloomwell Forest', moveCost: 2, spreadsTo: ['verdant'], spreadChance: 0.005, terrainEffects: [
         { description: 'Guerilla Tactics (Nature): +15% ATK, +15% DEF', appliesTo: { factionArchetype: 'Nature' }, effects: [{ stat: 'atk', modifier: 0.15 }, { stat: 'def', modifier: 0.15 }] },
         { description: 'Obstructed Machinery (Industrial): -10% DEF', appliesTo: { factionArchetype: 'Industrial' }, effects: [{ stat: 'def', modifier: -0.1 }] },
     ] },
-    { id: 'verdant', name: 'Verdant Plains', moveCost: 1, terrainEffects: [
+    { id: 'verdant', name: 'Verdant Plains', moveCost: 1, spreadsTo: ['wasteland'], spreadChance: 0.002, terrainEffects: [
         { description: 'Home Ground (Nature): +10% DEF', appliesTo: { factionArchetype: 'Nature' }, effects: [{ stat: 'def', modifier: 0.1 }] },
     ] },
-    { id: 'wasteland', name: 'Cracked Wasteland', moveCost: 1.2, terrainEffects: [
+    { id: 'wasteland', name: 'Cracked Wasteland', moveCost: 1.2, spreadsTo: ['verdant', 'gloomwell'], spreadChance: 0.003, terrainEffects: [
         { description: 'Raider\'s Advantage (Nomadic): +10% ATK', appliesTo: { factionArchetype: 'Nomadic' }, effects: [{ stat: 'atk', modifier: 0.1 }] },
         { description: 'Withering Environment (Nature): -10% ATK', appliesTo: { factionArchetype: 'Nature' }, effects: [{ stat: 'atk', modifier: -0.1 }] },
     ] },
@@ -97,7 +97,7 @@ export const BIOMES: readonly Biome[] = Object.freeze([
         { description: 'Heat-Treated Armor (Industrial): +10% DEF', appliesTo: { factionArchetype: 'Industrial' }, effects: [{ stat: 'def', modifier: 0.1 }] },
         { description: 'Scorched Earth (Nature): -15% ATK', appliesTo: { factionArchetype: 'Nature' }, effects: [{ stat: 'atk', modifier: -0.15 }] },
     ] },
-    { id: 'atharium_wastes', name: 'Atharium Wastes', moveCost: 1.8, terrainEffects: [
+    { id: 'atharium_wastes', name: 'Atharium Wastes', moveCost: 1.8, spreadsTo: ['wasteland', 'ashlands'], spreadChance: 0.008, terrainEffects: [
         { description: 'Unholy Ground (Undead): +15% DEF', appliesTo: { factionArchetype: 'Undead' }, effects: [{ stat: 'def', modifier: 0.15 }] },
         { description: 'Corrupting Influence (Holy): -10% DEF', appliesTo: { factionArchetype: 'Holy' }, effects: [{ stat: 'def', modifier: -0.1 }] },
     ] },
@@ -135,12 +135,12 @@ export const RESOURCES: readonly Resource[] = Object.freeze([
 export const INFRASTRUCTURE: readonly Infrastructure[] = Object.freeze([
   { id: 'settlement_hamlet', name: 'Hamlet', assetId: 'infra_settlement_hamlet', description: 'A small settlement, the heart of a burgeoning faction.', cost: {}, tier: 1, populationCapacity: 100, upgradesTo: 'settlement_town', upgradeCost: { 'steamwood_plank': 100, 'iron_ingot': 100 }, addsStorage: { 'Raw': 200, 'Processed': 100, 'Component': 50, 'Exotic': 10 }, multiTile: { width: 2, height: 2 }, xpGain: 100 },
   { id: 'settlement_town', name: 'Town', assetId: 'infra_settlement_town', description: 'A growing town capable of supporting a larger population and more advanced units.', cost: {}, tier: 2, populationCapacity: 500, addsStorage: { 'Raw': 1000, 'Processed': 500, 'Component': 250, 'Exotic': 50 }, multiTile: { width: 2, height: 2 }, xpGain: 250 },
-  { id: 'iron_mine', name: 'Iron Mine', assetId: 'infra_mine', description: 'Extracts Iron Ore from a deposit.', cost: { 'steamwood_plank': 20 }, produces: { resourceId: 'iron_ore', amount: 0.5 }, requiresResourceId: 'iron_ore', tier: 1, xpGain: 20 },
-  { id: 'lumber_camp', name: 'Lumber Camp', assetId: 'infra_lumber_camp', description: 'Harvests logs from Steamwood trees.', cost: { 'iron_ingot': 10 }, produces: { resourceId: 'steamwood_log', amount: 0.5 }, requiresResourceId: 'steamwood_log', tier: 1, xpGain: 20 },
-  { id: 'crystal_harvester', name: 'Crystal Harvester', assetId: 'infra_crystal_harvester', description: 'Extracts raw Chrono-Crystals.', cost: { 'steamwood_plank': 15, 'iron_ingot': 15 }, produces: { resourceId: 'chronocrystal_raw', amount: 0.2 }, requiresResourceId: 'chronocrystal_raw', tier: 1, xpGain: 30 },
-  { id: 'infra_forge', name: 'Forge', assetId: 'infra_forge', description: 'Refines 2 Iron Ore into 1 Iron Ingot.', cost: { 'steamwood_plank': 30 }, consumes: [{ resourceId: 'iron_ore', amount: 2 }], produces: { resourceId: 'iron_ingot', amount: 1 }, tier: 1, xpGain: 25 },
+  { id: 'iron_mine', name: 'Iron Mine', assetId: 'infra_mine', description: 'Extracts Iron Ore from a deposit.', cost: { 'steamwood_plank': 20 }, produces: { resourceId: 'iron_ore', amount: 0.5 }, requiresResourceId: 'iron_ore', tier: 1, xpGain: 20, pollution: 0.5 },
+  { id: 'lumber_camp', name: 'Lumber Camp', assetId: 'infra_lumber_camp', description: 'Harvests logs from Steamwood trees.', cost: { 'iron_ingot': 10 }, produces: { resourceId: 'steamwood_log', amount: 0.5 }, requiresResourceId: 'steamwood_log', tier: 1, xpGain: 20, adjacencyBonuses: [{ targetType: 'Biome', targetId: 'gloomwell', effect: 'Production', value: 0.5 }, { targetType: 'Biome', targetId: 'verdant', effect: 'Production', value: 0.2 }] },
+  { id: 'crystal_harvester', name: 'Crystal Harvester', assetId: 'infra_crystal_harvester', description: 'Extracts raw Chrono-Crystals.', cost: { 'steamwood_plank': 15, 'iron_ingot': 15 }, produces: { resourceId: 'chronocrystal_raw', amount: 0.2 }, requiresResourceId: 'chronocrystal_raw', tier: 1, xpGain: 30, adjacencyBonuses: [{ targetType: 'Infrastructure', targetId: 'infra_arcane_enchanter', effect: 'Production', value: 0.5 }] },
+  { id: 'infra_forge', name: 'Forge', assetId: 'infra_forge', description: 'Refines 2 Iron Ore into 1 Iron Ingot.', cost: { 'steamwood_plank': 30 }, consumes: [{ resourceId: 'iron_ore', amount: 2 }], produces: { resourceId: 'iron_ingot', amount: 1 }, tier: 1, xpGain: 25, adjacencyBonuses: [{ targetType: 'Infrastructure', targetId: 'iron_mine', effect: 'Production', value: 0.25 }], pollution: 2 },
   { id: 'infra_warehouse', name: 'Warehouse', assetId: 'infra_warehouse', description: 'Increases storage capacity for Raw materials by 500.', cost: { 'steamwood_plank': 25 }, tier: 1, addsStorage: { 'Raw': 500 }, xpGain: 15 },
-  { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsStorage: { 'Processed': 250, 'Component': 100 }, xpGain: 35 },
+  { id: 'infra_workshop', name: 'Workshop', assetId: 'infra_workshop', description: 'Increases storage for Processed goods and Components.', cost: { 'steamwood_plank': 20, 'iron_ingot': 20 }, tier: 2, addsStorage: { 'Processed': 250, 'Component': 100 }, xpGain: 35, pollution: 1 },
   { id: 'infra_research_archive', name: 'Research Archive', assetId: 'infra_research_archive', description: 'Generates 0.5 research points per tick.', cost: { 'refined_chronocrystal': 20, 'steamwood_plank': 50 }, tier: 2, generatesResearchPoints: 0.5, xpGain: 50 },
 ]);
 

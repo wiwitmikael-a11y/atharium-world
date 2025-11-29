@@ -1,8 +1,4 @@
 
-
-// FIX: Removed incorrect import from './constants' which caused circular dependencies.
-// These types are defined in this file.
-
 //
 // CORE ENTITY TRAITS & DEFINITIONS
 //
@@ -86,6 +82,8 @@ export interface Faction {
 // WORLD & MAP DEFINITIONS
 //
 
+export type WeatherType = 'Clear' | 'Rain' | 'Storm' | 'Fog' | 'Heatwave';
+
 export interface TerrainEffect {
   description: string;
   appliesTo: {
@@ -103,6 +101,8 @@ export interface Biome {
   name: string;
   moveCost: number;
   terrainEffects: TerrainEffect[];
+  spreadsTo?: string[]; // Biome expansion logic
+  spreadChance?: number;
 }
 
 export type ResourceTier = 'Raw' | 'Processed' | 'Component' | 'Exotic';
@@ -143,6 +143,7 @@ export interface ItemDefinition {
   rarity: Rarity;
   slot: EquipmentSlot;
   effects: ItemEffect[];
+  visualColor?: string; // For procedural graphics
 }
 
 //
@@ -165,6 +166,13 @@ export interface UnitDefinition {
   traitIds?: string[];
 }
 
+export interface AdjacencyBonus {
+    targetType: 'Biome' | 'Infrastructure';
+    targetId: string; // Biome ID or Infrastructure ID
+    effect: 'Production' | 'Defense';
+    value: number; // Multiplier (e.g., 0.5 for +50%)
+}
+
 export interface Infrastructure {
   id: string;
   name: string;
@@ -182,6 +190,8 @@ export interface Infrastructure {
   addsStorage?: Partial<Record<ResourceTier, number>>;
   generatesResearchPoints?: number;
   xpGain?: number;
+  adjacencyBonuses?: AdjacencyBonus[];
+  pollution?: number; // New: Generates corruption
 }
 
 export interface WorldEvent {
@@ -206,6 +216,16 @@ export interface CombatLogEntry {
   isFatalToSelf: boolean;
 }
 
+// Advanced Procedural Generation Types
+export interface VisualGenes {
+    bodyColor: string;
+    headType: 'Standard' | 'Hood' | 'Helm' | 'Crown' | 'Beast' | 'Mask';
+    weaponType: 'None' | 'Sword' | 'Axe' | 'Bow' | 'Staff' | 'Hammer' | 'Daggers';
+    weaponColor: string;
+    sizeScale: number;
+    accessory?: 'None' | 'Cape' | 'Backpack' | 'Wings';
+}
+
 export interface UnitInstance {
   id: number;
   unitId: string;
@@ -226,6 +246,7 @@ export interface UnitInstance {
   };
   currentActivity: string;
   buildTicks?: number;
+  visualGenes?: VisualGenes; 
 }
 
 export interface TileData {
@@ -243,6 +264,8 @@ export interface TileData {
   maxHp?: number;
   resourceCache?: Record<string, number>;
   resourceCooldown?: number;
+  efficiency?: number;
+  corruption?: number; // 0-100, determines biome shift
 }
 
 export enum GameEventType {
@@ -253,6 +276,8 @@ export enum GameEventType {
   FACTION_ELIMINATED,
   WAR_DECLARED,
   ALLIANCE_FORMED,
+  BIOME_CHANGE,
+  WEATHER_CHANGE,
 }
 
 export interface GameEvent {
@@ -268,6 +293,7 @@ export type DiplomaticStatus = 'War' | 'Neutral' | 'Alliance';
 export interface DiplomaticRelation {
   status: DiplomaticStatus;
   opinion: number;
+  grievances: string[]; // History of why we hate them
 }
 
 export interface StorageTierData {
@@ -289,6 +315,26 @@ export interface FactionState {
   isEliminated?: boolean;
 }
 
+export interface FloatingText {
+    id: number;
+    text: string;
+    x: number; // grid x
+    y: number; // grid y
+    color: string;
+    life: number; // 0-1, fades out
+    velocity: { x: number, y: number };
+}
+
+export type GodPowerType = 'Smite' | 'Heal' | 'Enrich';
+
+export interface GodPower {
+    id: GodPowerType;
+    name: string;
+    cost: number;
+    icon: string;
+    description: string;
+}
+
 export interface GameState {
   world: TileData[][];
   factions: Record<string, FactionState>;
@@ -296,7 +342,9 @@ export interface GameState {
     tick: number;
     year: number;
     epoch: string;
+    timeOfDay: number; // 0 - 24
   };
+  weather: WeatherType; 
   selectedTile: { x: number; y: number } | null;
   selectedUnitId: number | null;
   nextUnitId: number;
@@ -305,6 +353,8 @@ export interface GameState {
   eventLog: GameEvent[];
   nextEventId: number;
   totalMintedAthar: number;
+  floatingTexts: FloatingText[]; // New: For combat feedback
+  activeGodPower: GodPowerType | null; // New: Interaction mode
 }
 
 //

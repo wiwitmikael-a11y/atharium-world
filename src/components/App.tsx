@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import type { GameState, TileData, GamePhase } from '../types';
+import type { GameState, TileData, GamePhase, GodPowerType } from '../types';
 import { generateInitialGameState } from '../services/worldGenerator';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useCameraControls } from '../hooks/useCameraControls';
@@ -18,6 +18,7 @@ import StartMenu from './StartMenu';
 import LoadingScreen from './LoadingScreen';
 import HelpModal from './HelpModal';
 import SaveConfirmationDialog from './SaveConfirmationDialog';
+import GodPowersMenu from './GodPowersMenu';
 
 const TILE_WIDTH = 128;
 const TILE_VISUAL_HEIGHT = 64;
@@ -85,6 +86,50 @@ const App: React.FC = () => {
   }, []);
   
   const handleSelectTile = useCallback((x: number, y: number) => {
+    // If God Power is active, apply it instead of selecting
+    if (gameState?.activeGodPower) {
+        setGameState(prev => {
+            if (!prev) return null;
+            const newState = { ...prev };
+            const tile = newState.world[y][x];
+            let effectApplied = false;
+
+            if (newState.activeGodPower === 'Smite' && newState.totalMintedAthar >= 50) {
+                if (tile.units.length > 0) {
+                    tile.units.forEach(u => u.hp -= 50);
+                    newState.floatingTexts.push({ id: Math.random(), text: "-50", x, y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                } else if (tile.infrastructureId) {
+                    tile.hp = (tile.hp || 100) - 50;
+                    newState.floatingTexts.push({ id: Math.random(), text: "-50", x, y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                }
+                if (effectApplied) newState.totalMintedAthar -= 50;
+            } else if (newState.activeGodPower === 'Heal' && newState.totalMintedAthar >= 30) {
+                if (tile.units.length > 0) {
+                    tile.units.forEach(u => u.hp += 50);
+                    newState.floatingTexts.push({ id: Math.random(), text: "+50", x, y, color: "#00FF00", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                }
+                if (effectApplied) newState.totalMintedAthar -= 30;
+            } else if (newState.activeGodPower === 'Enrich' && newState.totalMintedAthar >= 100) {
+                if (!tile.resourceId && !tile.infrastructureId) {
+                    tile.resourceId = 'resource_fluxbloom';
+                    newState.floatingTexts.push({ id: Math.random(), text: "Enriched!", x, y, color: "#00FFFF", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                    newState.totalMintedAthar -= 100;
+                }
+            }
+
+            if (effectApplied) {
+                soundManager.playSFX('sfx_build_start'); // Reuse sound for now
+                newState.activeGodPower = null; // Deactivate after use
+            }
+            return newState;
+        });
+        return;
+    }
+
     soundManager.playSFX('ui_click_subtle');
     setIsSidebarMinimized(false);
     setGameState(prev => {
@@ -96,7 +141,7 @@ const App: React.FC = () => {
         setIsFollowing(!!selectedUnitId);
         return { ...prev, selectedTile: { x, y }, selectedUnitId };
     });
-  }, [soundManager]);
+  }, [soundManager, gameState?.activeGodPower]);
   
   const handleSelectUnit = useCallback((unitId: number | null) => {
     setIsFollowing(!!unitId);
@@ -117,6 +162,11 @@ const App: React.FC = () => {
       handleSelectTile(capital.x, capital.y);
     }
   }, [gameState, handlePanToLocation, handleSelectTile]);
+
+  const handleSetGodPower = useCallback((power: GodPowerType | null) => {
+      setGameState(prev => prev ? ({ ...prev, activeGodPower: power }) : null);
+      if (power) soundManager.playUIHoverSFX();
+  }, [soundManager]);
 
   const handleLogin = useCallback((name: string) => {
     setUsername(name);
@@ -271,10 +321,11 @@ const App: React.FC = () => {
         if (gameState && soundManager.isAudioInitialized) {
           return (
             <div className="w-full h-full flex">
-              <main ref={mapContainerRef} className="flex-1 h-full relative">
+              <main ref={mapContainerRef} className="flex-1 h-full relative cursor-default">
                 <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
                 <Header gameState={gameState} gameSpeed={gameSpeed} onSetSpeed={setGameSpeed} soundManager={soundManager} onResetWorld={handleResetWorld} onExitToMenu={handleExitToMenu} onSaveGame={handleSaveGame} onToggleHelp={() => setIsHelpOpen(p => !p)} onSelectFaction={handleSelectFaction} />
                 <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
+                <GodPowersMenu activePower={gameState.activeGodPower} onSelectPower={handleSetGodPower} currentAthar={gameState.totalMintedAthar} />
                 <SaveConfirmationDialog show={showSaveConfirm} />
               </main>
               <Sidebar selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y]?.[gameState.selectedTile.x] : null} gameState={gameState} onSelectUnit={handleSelectUnit} onPanToLocation={handlePanToLocation} soundManager={soundManager} isMinimized={isSidebarMinimized} onToggleMinimize={() => setIsSidebarMinimized(p => !p)} />

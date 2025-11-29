@@ -1,8 +1,6 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-// FIX: Added new types to support equipment and item displays.
-import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, Faction, FactionEffectType, ItemDefinition, StatEffect, EquipmentSlot } from '../types';
-// FIX: Added XP_PER_LEVEL and RARITY_COLORS to imports.
+import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, ItemDefinition, StatEffect } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNITS, XP_PER_LEVEL, RARITY_COLORS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';

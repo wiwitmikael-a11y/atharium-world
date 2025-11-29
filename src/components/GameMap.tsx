@@ -1,6 +1,6 @@
 
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import type { GameState } from '../types';
+import type { GameState, FloatingText } from '../types';
 import Tile from './Tile';
 import { UNITS_MAP, WORLD_SIZE } from '../constants';
 import { ASSET_PATHS } from '../assets';
@@ -15,8 +15,35 @@ const TILE_WIDTH = 128;
 const TILE_VISUAL_HEIGHT = 64;
 const TILE_CONTAINER_HEIGHT = 128;
 
+const FloatingTextLayer: React.FC<{ texts: FloatingText[], camera: { pan: {x:number, y:number}, zoom: number } }> = ({ texts, camera }) => {
+    return (
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-50">
+            {texts.map(ft => {
+                const screenX = (ft.x - ft.y) * (TILE_WIDTH / 2);
+                const screenY = (ft.x + ft.y) * (TILE_VISUAL_HEIGHT / 2);
+                
+                return (
+                    <div
+                        key={ft.id}
+                        className="absolute text-xl font-bold font-mono"
+                        style={{
+                            left: '50%', top: '50%',
+                            transform: `scale(${camera.zoom}) translate(${camera.pan.x + screenX}px, ${camera.pan.y + screenY - 50}px)`,
+                            color: ft.color,
+                            opacity: ft.life,
+                            textShadow: '2px 2px 0px black, 0 0 10px rgba(0,0,0,0.5)'
+                        }}
+                    >
+                        {ft.text}
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
 const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) => {
-  const { world, selectedTile, dyingUnits } = gameState;
+  const { world, selectedTile, dyingUnits, floatingTexts, gameTime, activeGodPower } = gameState;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
@@ -76,8 +103,16 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
     return tilesToRender;
   }, [camera, viewportSize, world]);
 
+  // Calculate Lighting Opacity (0 = Day, 0.6 = Night)
+  const timeOfDay = gameTime.timeOfDay; // 0-24
+  const nightOpacity = Math.max(0, Math.min(0.6, 
+    timeOfDay < 6 ? 0.6 - (timeOfDay/6)*0.6 : // Sunrise
+    timeOfDay > 18 ? (timeOfDay-18)/6*0.6 : // Sunset
+    0 // Day
+  ));
+
   return (
-    <div ref={mapContainerRef} className="relative w-full h-full overflow-hidden bg-gray-900">
+    <div ref={mapContainerRef} className={`relative w-full h-full overflow-hidden bg-gray-900 ${activeGodPower ? 'cursor-crosshair' : ''}`}>
         <div 
           className="absolute top-1/2 left-1/2"
           style={{ 
@@ -117,6 +152,12 @@ const GameMap: React.FC<GameMapProps> = ({ gameState, onSelectTile, camera }) =>
               );
           })}
       </div>
+      
+      <FloatingTextLayer texts={floatingTexts} camera={camera} />
+      
+      {/* Day/Night Overlay */}
+      <div className="absolute inset-0 pointer-events-none transition-opacity duration-1000" style={{ backgroundColor: '#000033', opacity: nightOpacity, mixBlendMode: 'multiply' }} />
+      <div className="absolute inset-0 pointer-events-none transition-opacity duration-1000" style={{ backgroundColor: '#1a1a4a', opacity: nightOpacity * 0.5, mixBlendMode: 'overlay' }} />
     </div>
   );
 };

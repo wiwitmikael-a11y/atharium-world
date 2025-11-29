@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { TileData, GameState } from '../types';
-import { RESOURCES_MAP, UNITS_MAP, BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, BIOME_PASTEL_COLORS, FACTIONS_MAP } from '../constants';
+import { RESOURCES_MAP, UNITS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, BIOME_PASTEL_COLORS, FACTIONS_MAP } from '../constants';
 import { ProceduralAsset } from './ProceduralGraphics';
 
 interface TileProps {
@@ -20,7 +20,7 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
   
   const hasLoot = tile.loot && tile.loot.length > 0;
 
-  const isUnitSelected = unitInstance && gameState.selectedUnitId === unitInstance.id;
+  const isUnitSelected = !!unitInstance && gameState.selectedUnitId === unitInstance.id;
   const showAttackFlash = unitInstance && gameState.attackFlashes[unitInstance.id];
 
   const TILE_WIDTH = 128;
@@ -38,7 +38,7 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
     let ownerId = tile.ownerFactionId;
     if (tile.partOfInfrastructure) {
       const { rootX, rootY } = tile.partOfInfrastructure;
-      const rootTile = gameState.world[rootY]?.[rootX]; // Safe access
+      const rootTile = gameState.world[rootY]?.[rootX];
       ownerId = rootTile?.ownerFactionId;
     }
     return ownerId ? FACTIONS_MAP.get(ownerId) : null;
@@ -62,7 +62,7 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
       role="button" 
       aria-label={`Tile ${tile.x}, ${tile.y}`}
     >
-      {/* Terrain Layer - Uses CSS for performant isometric shape */}
+      {/* Terrain Layer */}
       <div 
         className="absolute inset-0 transition-colors duration-300" 
         style={{ 
@@ -75,15 +75,15 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
             className="absolute inset-0" 
             style={{ 
                 backgroundColor: BIOME_PASTEL_COLORS[tile.biomeId] || '#333',
-                // Add a subtle gradient for pseudo-3D effect
-                backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.1) 100%)'
+                backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.1) 100%)',
+                filter: tile.corruption ? `grayscale(${tile.corruption}%) sepia(${tile.corruption * 0.5}%)` : 'none'
             }} 
         />
         {/* Faction Territory Overlay */}
         {faction && (
             <div 
                 className="absolute inset-0 opacity-20" 
-                style={{ backgroundColor: faction.color.replace('500', '400') }} // Crude approximation, assumes tailwind name
+                style={{ backgroundColor: faction.color.replace('500', '400') }} 
             />
         )}
         {/* Selection Glow */}
@@ -92,18 +92,16 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
         )}
       </div>
 
-      {/* Object Layer - Procedural SVGs */}
+      {/* Object Layer - Voxel SVGs */}
       {shouldRenderObjects && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: terrainZ + 1 }}>
           
-          {/* Resources */}
           {resource && (
             <div className="absolute left-[20%] top-[10%] w-[60%] h-[60%]">
                 <ProceduralAsset assetId={resource.assetId} />
             </div>
           )}
 
-          {/* Infrastructure */}
           {infrastructure && (
             <div className="absolute left-0 top-[-20%] w-full h-full">
                 <ProceduralAsset 
@@ -114,29 +112,26 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
             </div>
           )}
 
-          {/* World Events */}
           {worldEvent && (
              <div className="absolute left-[25%] top-[15%] w-[50%] h-[50%]">
                  <div className="w-full h-full bg-purple-500/50 rounded-full blur-md animate-pulse absolute top-4 left-0"></div>
-                 {/* Placeholder for event until we make specific event SVGs */}
                  <ProceduralAsset assetId="resource_chronocrystal" /> 
              </div>
           )}
 
-          {/* Loot */}
           {hasLoot && (
              <div className="absolute left-[35%] top-[35%] w-[30%] h-[30%] z-20">
                 <ProceduralAsset assetId="asset_loot_container" />
              </div>
           )}
 
-          {/* Units */}
           {unitInstance && unitDef && (
             <div className="absolute left-[25%] top-[5%] w-[50%] h-[50%] z-30 transition-transform duration-200">
               <ProceduralAsset 
                 assetId={unitDef.assetId} 
                 factionId={unitInstance.factionId} 
                 isSelected={isUnitSelected}
+                visualGenes={unitInstance.visualGenes}
               />
               {showAttackFlash && (
                   <div className="absolute inset-0 bg-white/80 rounded-full animate-ping" />
