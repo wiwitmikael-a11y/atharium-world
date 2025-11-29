@@ -15,6 +15,7 @@ export const ASSET_PATHS: Record<string, string> = {
   'faction_overlay': getAssetUrl('faction_overlay'),
   'asset_loot_container': getAssetUrl('lootbox'),
 
+  // We keep visual assets for fallback, but main engine is now procedural
   // World Events
   'discovery_fallen_airship': getAssetUrl('discovery_fallen_airship'),
   'discovery_ancient_automaton': getAssetUrl('discovery_ancient_automaton'),
@@ -47,67 +48,4 @@ export const ASSET_PATHS: Record<string, string> = {
   'infra_warehouse': getAssetUrl('infra_warehouse'),
   'infra_workshop': getAssetUrl('infra_workshop'),
   'infra_research_archive': getAssetUrl('infra_research_archive'),
-
-  // Units: Cogwork Compact
-  'unit_citizen_automaton': getAssetUrl('unit_citizen_automaton'),
-  'unit_soldier_gearforged': getAssetUrl('unit_soldier_gearforged'),
-  'unit_archer_clockwork': getAssetUrl('unit_archer_clockwork'),
-  'unit_golem_steam': getAssetUrl('unit_golem_steam'),
-  'unit_hero_forgelord': getAssetUrl('unit_hero_forgelord'),
-
-  // Units: Verdant Wardens
-  'unit_citizen_human': getAssetUrl('unit_citizen_human'),
-  'unit_warden_initiate': getAssetUrl('unit_warden_initiate'),
-  'unit_archer_thorn': getAssetUrl('unit_archer_thorn'),
-  'unit_golem_wood': getAssetUrl('unit_golem_wood'),
-  'unit_mage_beasttamer': getAssetUrl('unit_mage_beasttamer'),
-  'unit_hero_elderwood': getAssetUrl('unit_hero_elderwood'),
-
-  // Units: Sunfire Dynasty
-  'unit_sunfire_initiate': getAssetUrl('unit_sunfire_initiate'),
-  'unit_mage_technomancer': getAssetUrl('unit_mage_technomancer'),
-  'unit_soldier_templar': getAssetUrl('unit_soldier_templar'),
-  'unit_siege_cannon': getAssetUrl('unit_siege_cannon'),
-  'unit_hero_sunpriestess': getAssetUrl('unit_hero_sunpriestess'),
-
-  // Units: Gloom Syndicate
-  'unit_syndicate_lackey': getAssetUrl('unit_syndicate_lackey'),
-  'unit_syndicate_thug': getAssetUrl('unit_syndicate_thug'),
-  'unit_mage_alchemist': getAssetUrl('unit_mage_alchemist'),
-  'unit_rogue_shadow': getAssetUrl('unit_rogue_shadow'),
-  'unit_rogue_saboteur': getAssetUrl('unit_rogue_saboteur'),
-  'unit_hero_shadowbroker': getAssetUrl('unit_hero_shadowbroker'),
-
-  // Units: Ironclad Dwarves
-  'unit_dwarf_miner': getAssetUrl('unit_dwarf_miner'),
-  'unit_dwarf_warrior': getAssetUrl('unit_dwarf_warrior'),
-  'unit_dwarf_thunderer': getAssetUrl('unit_dwarf_thunderer'),
-  'unit_hero_dwarf_king': getAssetUrl('unit_hero_dwarf_king'),
-
-  // Units: Sylvan Elves
-  'unit_elf_harvester': getAssetUrl('unit_elf_harvester'),
-  'unit_elf_longbow': getAssetUrl('unit_elf_longbow'),
-  'unit_elf_bladedancer': getAssetUrl('unit_elf_bladedancer'),
-  'unit_hero_elf_queen': getAssetUrl('unit_hero_elf_queen'),
-
-  // Units: Dread Legion
-  'unit_skeleton': getAssetUrl('unit_skeleton'),
-  'unit_skeleton_worker': getAssetUrl('unit_skeleton_worker'),
-  'unit_skeleton_scout': getAssetUrl('unit_skeleton_scout'),
-  'unit_necromancer': getAssetUrl('unit_necromancer'),
-  'unit_bone_golem': getAssetUrl('unit_bone_golem'),
-  'unit_hero_lich_lord': getAssetUrl('unit_hero_lich_lord'),
-  
-  // Units: Crimson Horde
-  'unit_orc_peon': getAssetUrl('unit_orc_peon'),
-  'unit_orc_hunter': getAssetUrl('unit_orc_hunter'),
-  'unit_orc_brute': getAssetUrl('unit_orc_brute'),
-  'unit_orc_berserker': getAssetUrl('unit_orc_berserker'),
-  'unit_hero_orc_warlord': getAssetUrl('unit_hero_orc_warlord'),
-
-  // Units: Neutral
-  'unit_beast_scrapfang': getAssetUrl('unit_beast_scrapfang'),
-  'unit_beast_aetherwing': getAssetUrl('unit_beast_aetherwing'),
-  'unit_goblin_raider': getAssetUrl('unit_goblin_raider'),
-  'unit_bandit_raider': getAssetUrl('unit_bandit_raider'),
 };

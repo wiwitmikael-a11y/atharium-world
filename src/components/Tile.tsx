@@ -18,11 +18,8 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
   const unitInstance = tile.units.length > 0 ? tile.units[0] : null;
   const unitDef = unitInstance ? UNITS_MAP.get(unitInstance.unitId) : null;
   
-  const hasLoot = tile.loot && tile.loot.length > 0;
-
   const isUnitSelected = !!unitInstance && gameState.selectedUnitId === unitInstance.id;
-  const showAttackFlash = unitInstance && gameState.attackFlashes[unitInstance.id];
-
+  
   const TILE_WIDTH = 128;
   const TILE_VISUAL_HEIGHT = 64;
   const TILE_CONTAINER_HEIGHT = 128;
@@ -45,8 +42,6 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
   };
 
   const faction = getOwnerFaction();
-
-  // Create isometric polygon clip path
   const verticalPadding = (1 - (TILE_VISUAL_HEIGHT / TILE_CONTAINER_HEIGHT)) / 2 * 100;
   const ISOMETRIC_CLIP_PATH = `polygon(50% ${verticalPadding}%, 100% 50%, 50% ${100 - verticalPadding}%, 0% 50%)`;
 
@@ -58,73 +53,47 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
         width: `${TILE_WIDTH}px`, 
         height: `${TILE_CONTAINER_HEIGHT}px` 
       }}
-      onClick={onSelect} 
-      role="button" 
-      aria-label={`Tile ${tile.x}, ${tile.y}`}
+      onClick={onSelect}
     >
-      {/* Terrain Layer */}
       <div 
-        className="absolute inset-0 transition-colors duration-300" 
+        className="absolute inset-0" 
         style={{ 
             zIndex: terrainZ, 
             clipPath: ISOMETRIC_CLIP_PATH, 
-            WebkitClipPath: ISOMETRIC_CLIP_PATH 
+            WebkitClipPath: ISOMETRIC_CLIP_PATH,
+            backgroundColor: BIOME_PASTEL_COLORS[tile.biomeId] || '#333'
         }}
       >
-        <div 
-            className="absolute inset-0" 
-            style={{ 
-                backgroundColor: BIOME_PASTEL_COLORS[tile.biomeId] || '#333',
-                backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.1) 100%)',
-                filter: tile.corruption ? `grayscale(${tile.corruption}%) sepia(${tile.corruption * 0.5}%)` : 'none'
-            }} 
-        />
-        {/* Faction Territory Overlay */}
         {faction && (
-            <div 
-                className="absolute inset-0 opacity-20" 
-                style={{ backgroundColor: faction.color.replace('500', '400') }} 
-            />
+            <div className="absolute inset-0 opacity-20" style={{ backgroundColor: faction.color.replace('500', '400') }} />
         )}
-        {/* Selection Glow */}
         {isSelected && !isUnitSelected && (
             <div className="absolute inset-0 bg-yellow-400/30 animate-pulse" style={{ mixBlendMode: 'overlay' }} />
         )}
       </div>
 
-      {/* Object Layer - Voxel SVGs */}
       {shouldRenderObjects && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: terrainZ + 1 }}>
-          
           {resource && (
             <div className="absolute left-[20%] top-[10%] w-[60%] h-[60%]">
                 <ProceduralAsset assetId={resource.assetId} />
             </div>
           )}
-
           {infrastructure && (
             <div className="absolute left-0 top-[-20%] w-full h-full">
-                <ProceduralAsset 
-                    assetId={infrastructure.assetId} 
-                    factionId={tile.ownerFactionId}
-                    scale={isSettlement ? 1.2 : 0.8}
-                />
+                <ProceduralAsset assetId={infrastructure.assetId} factionId={tile.ownerFactionId} scale={isSettlement ? 1.2 : 0.8} />
             </div>
           )}
-
           {worldEvent && (
-             <div className="absolute left-[25%] top-[15%] w-[50%] h-[50%]">
-                 <div className="w-full h-full bg-purple-500/50 rounded-full blur-md animate-pulse absolute top-4 left-0"></div>
+             <div className="absolute left-[25%] top-[15%] w-[50%] h-[50%] animate-pulse">
                  <ProceduralAsset assetId="resource_chronocrystal" /> 
              </div>
           )}
-
-          {hasLoot && (
+          {tile.loot && tile.loot.length > 0 && (
              <div className="absolute left-[35%] top-[35%] w-[30%] h-[30%] z-20">
                 <ProceduralAsset assetId="asset_loot_container" />
              </div>
           )}
-
           {unitInstance && unitDef && (
             <div className="absolute left-[25%] top-[5%] w-[50%] h-[50%] z-30 transition-transform duration-200">
               <ProceduralAsset 
@@ -133,9 +102,6 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
                 isSelected={isUnitSelected}
                 visualGenes={unitInstance.visualGenes}
               />
-              {showAttackFlash && (
-                  <div className="absolute inset-0 bg-white/80 rounded-full animate-ping" />
-              )}
             </div>
           )}
         </div>

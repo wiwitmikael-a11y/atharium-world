@@ -1,7 +1,7 @@
 
 import { useEffect, useRef } from 'react';
-import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType, ItemDefinition, Rarity, WeatherType, FloatingText, GodPowerType } from '../types';
-import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCES, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL, INFRA_HP_COST_MULTIPLIER, INFRA_RESOURCE_DROP_PERCENT, LEVEL_MILESTONES, RESOURCE_SPAWN_CHANCES } from '../constants';
+import { GameState, TileData, Infrastructure as InfraType, FactionState, UnitInstance, GameEvent, Faction, FactionEffectType, UnitDefinition, SoundManager, Biome, ResourceTier, GameEventType, ItemDefinition, WeatherType, FloatingText } from '../types';
+import { TICK_PER_YEAR, INFRASTRUCTURE_MAP, UNITS_MAP, INFRASTRUCTURE, ATHAR_CAP, FACTIONS_MAP, UNITS, BIOMES_MAP, UNIT_TRAITS_MAP, RESOURCES_MAP, RESOURCES, XP_PER_LEVEL, INFRA_HP_COST_MULTIPLIER, LEVEL_MILESTONES, RESOURCE_SPAWN_CHANCES } from '../constants';
 import { ITEMS } from '../services/dataLoader';
 import { getUnitStats } from '../utils/unit';
 
@@ -90,9 +90,8 @@ const handleLevelUp = (unit: UnitInstance, newState: GameState) => {
     }
 };
 
-const RARITY_ORDER: Rarity[] = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
-
 const autoEquip = (unit: UnitInstance) => {
+    const RARITY_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
     const getRarityScore = (item: ItemDefinition | null) => item ? RARITY_ORDER.indexOf(item.rarity) : -1;
 
     for (const slot of ['Weapon', 'Armor', 'Accessory'] as const) {
@@ -123,12 +122,10 @@ const autoEquip = (unit: UnitInstance) => {
             unit.inventory.splice(bestInventoryItemIndex, 1);
             
             if (slot === 'Weapon' && unit.visualGenes) {
-               if (bestInventoryItem.name.includes('Sword') || bestInventoryItem.name.includes('Blade')) unit.visualGenes.weaponType = 'Sword';
-               else if (bestInventoryItem.name.includes('Axe') || bestInventoryItem.name.includes('Cleaver')) unit.visualGenes.weaponType = 'Axe';
+               if (bestInventoryItem.name.includes('Sword')) unit.visualGenes.weaponType = 'Sword';
+               else if (bestInventoryItem.name.includes('Axe')) unit.visualGenes.weaponType = 'Axe';
                else if (bestInventoryItem.name.includes('Bow')) unit.visualGenes.weaponType = 'Bow';
-               else if (bestInventoryItem.name.includes('Staff') || bestInventoryItem.name.includes('Wand')) unit.visualGenes.weaponType = 'Staff';
-               
-               // unit.visualGenes.weaponColor = getRarityColorHex(bestInventoryItem.rarity);
+               else if (bestInventoryItem.name.includes('Staff')) unit.visualGenes.weaponType = 'Staff';
             }
         }
     }
@@ -144,7 +141,6 @@ const calculateTerrainBonus = (unit: UnitInstance, biome: Biome, weather: Weathe
     let atkBonus = 0;
     let defBonus = 0;
 
-    // Biome Effects
     for (const effect of biome.terrainEffects) {
         const appliesByArchetype = effect.appliesTo.factionArchetype && effect.appliesTo.factionArchetype === factionInfo.archetype;
         const appliesByRole = effect.appliesTo.unitRole && effect.appliesTo.unitRole === unitDef.role;
@@ -157,21 +153,19 @@ const calculateTerrainBonus = (unit: UnitInstance, biome: Biome, weather: Weathe
         }
     }
 
-    // Weather Effects (Dynamic)
     if (weather === 'Rain') {
-        if (unitDef.role === 'Ranged') atkBonus -= 0.2; // Hard to shoot in rain
-        if (factionInfo.archetype === 'Nature') defBonus += 0.1; // Plants love rain
+        if (unitDef.role === 'Ranged') atkBonus -= 0.2;
+        if (factionInfo.archetype === 'Nature') defBonus += 0.1;
     } else if (weather === 'Storm') {
         atkBonus -= 0.1;
         defBonus -= 0.1;
     } else if (weather === 'Fog') {
         if (unitDef.role === 'Ranged') atkBonus -= 0.3;
-        if (factionInfo.archetype === 'Shadow') atkBonus += 0.2; // Shadow thrives in fog
+        if (factionInfo.archetype === 'Shadow') atkBonus += 0.2;
     }
 
     return { atkBonus, defBonus };
 };
-
 
 const recalculateStorage = (factionState: FactionState, ownedTiles: TileData[]) => {
     for (const tier in factionState.storage) {
@@ -205,12 +199,7 @@ const calculateEfficiency = (tile: TileData, world: TileData[][]): number => {
     if (!infra?.adjacencyBonuses) return 1.0;
 
     let bonus = 0;
-    const neighbors = [
-        world[tile.y-1]?.[tile.x],
-        world[tile.y+1]?.[tile.x],
-        world[tile.y]?.[tile.x-1],
-        world[tile.y]?.[tile.x+1]
-    ].filter(Boolean);
+    const neighbors = [world[tile.y-1]?.[tile.x], world[tile.y+1]?.[tile.x], world[tile.y]?.[tile.x-1], world[tile.y]?.[tile.x+1]].filter(Boolean);
 
     for (const adj of infra.adjacencyBonuses) {
         let count = 0;
@@ -270,16 +259,15 @@ const runManagementAI = (faction: FactionState, ownedTiles: TileData[], world: T
                 
                 if (canAfford) {
                     Object.entries(modifiedUnitCost).forEach(([resId, amount]) => { faction.resources[resId] -= amount; });
-                    // Procedural Unit Generation with advanced visuals
                     world[settlement.y][settlement.x].units.push({
                         id: nextUnitId, unitId: unitToTrain.id, factionId: faction.id, hp: getInitialHp(unitToTrain, factionInfo),
                         x: settlement.x, y: settlement.y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Guarding',
                         visualGenes: {
-                            bodyColor: FACTIONS_MAP.get(faction.id)?.color ? '#ef4444' : '#888', // Will be mapped by render
+                            bodyColor: FACTIONS_MAP.get(faction.id)?.color ? '#ef4444' : '#888',
                             headType: unitToTrain.role === 'Hero' ? 'Crown' : unitToTrain.role === 'Melee' ? 'Helm' : unitToTrain.role === 'Ranged' ? 'Hood' : 'Standard',
                             weaponType: unitToTrain.role === 'Ranged' ? 'Bow' : unitToTrain.role === 'Support' ? 'Staff' : unitToTrain.role === 'Melee' ? (Math.random() > 0.5 ? 'Sword' : 'Axe') : 'None',
                             weaponColor: '#bdc3c7',
-                            sizeScale: 1 + (Math.random() * 0.2 - 0.1), // Slight size variation
+                            sizeScale: 1 + (Math.random() * 0.2 - 0.1),
                             accessory: Math.random() > 0.8 ? 'Cape' : 'None'
                         }
                     });
@@ -309,7 +297,7 @@ const runLeaderAI = (faction: FactionState, ownedTiles: TileData[], world: TileD
                 x: settlement.x, y: settlement.y, adventureTicks: adventureDuration, level: 5, xp: 0, killCount: 0, 
                 combatLog: [], inventory: [], equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Adventuring',
                 visualGenes: {
-                    bodyColor: '#ffd700', // Goldish
+                    bodyColor: '#ffd700',
                     headType: 'Crown',
                     weaponType: 'Hammer',
                     weaponColor: '#ffd700',
@@ -363,7 +351,7 @@ const updateWeather = (newState: GameState) => {
     }
 }
 
-const updateBiomes = (world: TileData[][], tick: number, eventLog: GameEvent[]) => {
+const updateBiomes = (world: TileData[][], tick: number) => {
     if (tick % 250 !== 0) return; 
 
     const worldWidth = world.length;
@@ -409,11 +397,8 @@ const updateBiomes = (world: TileData[][], tick: number, eventLog: GameEvent[]) 
         }
     }
 
-    changes.forEach(c => {
-        world[c.y][c.x].biomeId = c.newBiome;
-    });
+    changes.forEach(c => world[c.y][c.x].biomeId = c.newBiome);
 }
-
 
 const processGameTick = (prevState: GameState, soundManager: SoundManager): GameState => {
     const newState: GameState = JSON.parse(JSON.stringify(prevState));
@@ -422,8 +407,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
     newState.gameTime.tick++;
     if (newState.gameTime.tick % TICK_PER_YEAR === 0) newState.gameTime.year++;
-    
-    // Update Time of Day (24hr cycle over 1000 ticks)
     newState.gameTime.timeOfDay = (newState.gameTime.tick % 1000) / 1000 * 24;
 
     for (const key in newState.attackFlashes) {
@@ -431,7 +414,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
     }
     newState.dyingUnits = newState.dyingUnits.filter(u => newState.gameTime.tick - u.deathTick < 25);
     
-    // Update Floating Texts
     newState.floatingTexts = newState.floatingTexts.map(ft => ({
         ...ft,
         life: ft.life - 0.02,
@@ -440,7 +422,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
     })).filter(ft => ft.life > 0);
 
     updateWeather(newState);
-    updateBiomes(newState.world, newState.gameTime.tick, newState.eventLog);
+    updateBiomes(newState.world, newState.gameTime.tick);
 
     if (newState.gameTime.tick % 50 === 0) {
         for (const factionId in newState.factions) {
@@ -558,9 +540,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
              const extractorCandidates = buildSites.map(s => s.resourceId ? { tile: s, infra: INFRASTRUCTURE.find(i => i.requiresResourceId === s.resourceId) } : null)
                     .filter((c): c is { tile: TileData; infra: InfraType } => c !== null && c.infra !== undefined);
             
-            if (extractorCandidates.length > 0) {
-                buildChoice = extractorCandidates[0];
-            }
+            if (extractorCandidates.length > 0) buildChoice = extractorCandidates[0];
             
             if (buildChoice) {
                 const { tile, infra } = buildChoice;
@@ -594,10 +574,7 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
         const unitDef = UNITS_MAP.get(unit.unitId)!;
         if (unitDef.traitIds?.some(id => UNIT_TRAITS_MAP.get(id)?.effects.some(e => e.type === 'HP_REGEN'))) {
             const { maxHp } = getUnitStats(unit);
-            if (unit.hp < maxHp) {
-                unit.hp = Math.min(maxHp, unit.hp + 0.1);
-                // addFloatingText(newState, "+HP", unit.x, unit.y, "#00FF00"); // Spammy
-            }
+            if (unit.hp < maxHp) unit.hp = Math.min(maxHp, unit.hp + 0.1);
         }
     }
 
@@ -765,7 +742,6 @@ const processGameTick = (prevState: GameState, soundManager: SoundManager): Game
 
     return newState;
 };
-
 
 export const useGameLoop = (
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>,
