@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { SoundManager } from '../types';
 
@@ -9,7 +10,6 @@ interface SettingsMenuProps {
 }
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({ soundManager, onReset, onExit, onSaveGame }) => {
-
   const menuItems = [
     { label: 'Save Game', action: onSaveGame },
     { label: `BGM: ${soundManager.isBgmEnabled ? 'On' : 'Off'}`, action: soundManager.toggleBgm },
@@ -19,7 +19,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ soundManager, onReset, onEx
   ];
 
   return (
-    <div className="absolute top-14 left-2 w-48 bg-gray-900/70 backdrop-blur-md rounded-lg shadow-2xl border border-cyan-500/50 z-50 pop-in">
+    <div className="absolute top-14 left-0 w-48 bg-gray-900/80 backdrop-blur-md rounded-lg shadow-2xl border border-cyan-500/50 z-50 pop-in">
       <ul className="p-2 space-y-1">
         {menuItems.map((item) => (
           <li key={item.label}>

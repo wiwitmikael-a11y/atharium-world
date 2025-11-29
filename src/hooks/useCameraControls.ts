@@ -9,62 +9,45 @@ export const useCameraControls = (
   setCamera: React.Dispatch<React.SetStateAction<{ pan: { x: number; y: number; }; zoom: number; }>>,
   zoom: number,
   setIsFollowing: React.Dispatch<React.SetStateAction<boolean>>,
-  isInitialized: boolean, // New prop to ensure listeners are ready
+  isInitialized: boolean,
 ) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const keysPressedRef = useRef<Set<string>>(new Set());
   const animationFrameRef = useRef<number | undefined>(undefined);
-
-  // Refs for touch controls
   const activePointersRef = useRef(new Map<number, PointerEvent>());
   const lastPinchDistRef = useRef(0);
 
   const pan = useCallback((dx: number, dy: number) => {
-    setCamera((prev) => ({ ...prev, pan: { x: prev.pan.x + dx, y: prev.pan.y + dy } }));
+    setCamera(prev => ({ ...prev, pan: { x: prev.pan.x + dx, y: prev.pan.y + dy } }));
   }, [setCamera]);
 
-  // Game loop for keyboard panning
   useEffect(() => {
-    if (!isInitialized) return; // Don't attach keyboard listeners until game is ready
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      keysPressedRef.current.add(e.key.toLowerCase());
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysPressedRef.current.delete(e.key.toLowerCase());
-    };
+    if (!isInitialized) return;
+    const handleKeyDown = (e: KeyboardEvent) => keysPressedRef.current.add(e.key.toLowerCase());
+    const handleKeyUp = (e: KeyboardEvent) => keysPressedRef.current.delete(e.key.toLowerCase());
 
     const gameLoop = () => {
-      let dx = 0;
-      let dy = 0;
       const effectivePanSpeed = PAN_SPEED / zoom;
+      let dx = 0; let dy = 0;
+      if (keysPressedRef.current.has('w')) dy += effectivePanSpeed;
+      if (keysPressedRef.current.has('s')) dy -= effectivePanSpeed;
+      if (keysPressedRef.current.has('a')) dx += effectivePanSpeed;
+      if (keysPressedRef.current.has('d')) dx -= effectivePanSpeed;
 
-      if (keysPressedRef.current.has('w')) { dy += effectivePanSpeed; }
-      if (keysPressedRef.current.has('s')) { dy -= effectivePanSpeed; }
-      if (keysPressedRef.current.has('a')) { dx += effectivePanSpeed; }
-      if (keysPressedRef.current.has('d')) { dx -= effectivePanSpeed; }
-
-      if (dx !== 0 || dy !== 0) {
-        setIsFollowing(false);
-        pan(dx, dy);
-      }
+      if (dx !== 0 || dy !== 0) { setIsFollowing(false); pan(dx, dy); }
       animationFrameRef.current = requestAnimationFrame(gameLoop);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
   }, [pan, zoom, setIsFollowing, isInitialized]);
 
-  // Event listeners for mouse and touch
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !isInitialized) return;
@@ -85,23 +68,17 @@ export const useCameraControls = (
     
     const handlePointerMove = (e: PointerEvent) => {
       if (!activePointersRef.current.has(e.pointerId)) return;
-
-      if (activePointersRef.current.size === 1 && (e.movementX !== 0 || e.movementY !== 0)) {
-        setIsFollowing(false);
-      }
-      
+      if (activePointersRef.current.size === 1 && (e.movementX !== 0 || e.movementY !== 0)) setIsFollowing(false);
       activePointersRef.current.set(e.pointerId, e);
 
-      if (activePointersRef.current.size === 1) { // Panning
-          const dx = e.movementX / zoom;
-          const dy = e.movementY / zoom;
-          pan(dx, dy);
+      if (activePointersRef.current.size === 1) { // Pan
+          pan(e.movementX / zoom, e.movementY / zoom);
       } else if (activePointersRef.current.size === 2) { // Pinch-zoom
           e.preventDefault();
           const newDist = getDistance(activePointersRef.current);
           if (lastPinchDistRef.current > 0) {
-              const zoomFactor = newDist / lastPinchDistRef.current;
-               setCamera(prev => ({ ...prev, zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom * zoomFactor)) }));
+            const zoomFactor = newDist / lastPinchDistRef.current;
+            setCamera(prev => ({ ...prev, zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom * zoomFactor)) }));
           }
           lastPinchDistRef.current = newDist;
       }
@@ -109,12 +86,8 @@ export const useCameraControls = (
 
     const handlePointerUp = (e: PointerEvent) => {
       activePointersRef.current.delete(e.pointerId);
-      if (activePointersRef.current.size < 2) {
-          lastPinchDistRef.current = 0;
-      }
-      if (activePointersRef.current.size === 0) {
-          document.body.classList.remove('panning-active');
-      }
+      if (activePointersRef.current.size < 2) lastPinchDistRef.current = 0;
+      if (activePointersRef.current.size === 0) document.body.classList.remove('panning-active');
     };
 
     const handleWheel = (e: WheelEvent) => {
@@ -123,17 +96,14 @@ export const useCameraControls = (
       setCamera(prev => ({ ...prev, zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom * zoomFactor)) }));
     };
 
-    container.classList.add('cursor-grab');
     container.addEventListener('pointerdown', handlePointerDown);
     container.addEventListener('pointermove', handlePointerMove);
     container.addEventListener('pointerup', handlePointerUp);
     container.addEventListener('pointercancel', handlePointerUp);
     container.addEventListener('pointerleave', handlePointerUp);
     container.addEventListener('wheel', handleWheel, { passive: false });
-
     return () => {
-      document.body.classList.remove('panning-active'); // Cleanup body class
-      container.classList.remove('cursor-grab');
+      document.body.classList.remove('panning-active');
       container.removeEventListener('pointerdown', handlePointerDown);
       container.removeEventListener('pointermove', handlePointerMove);
       container.removeEventListener('pointerup', handlePointerUp);

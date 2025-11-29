@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface IconProps {
@@ -6,7 +5,7 @@ interface IconProps {
   className?: string;
 }
 
-const ICONS: Record<string, JSX.Element> = {
+const ICONS: Record<string, React.ReactElement> = {
     'time': <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />,
     'epoch': <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />,
     'athar': <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" />,
@@ -28,21 +27,13 @@ const ICONS: Record<string, JSX.Element> = {
     'sword': <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 3.75l16.5 16.5M8.25 3l12.75 12.75" transform="rotate(45 12 12) scale(0.8)" />,
     'shield': <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.745 3.745 0 013.296-1.043A3.745 3.745 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.745 3.745 0 011.043 3.296A3.745 3.745 0 0121 12z" />,
     'ring': <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 12a2.25 2.25 0 10-4.5 0 2.25 2.25 0 004.5 0z M21 12c0 3.866-3.134 7-7 7s-7-3.134-7-7 3.134-7 7-7 7 3.134 7 7z" />,
+    'checkmark': <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />,
 };
 
-const Icon: React.FC<IconProps> = ({ name, className = 'w-6 h-6' }) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      className={className}
-    >
+const Icon: React.FC<IconProps> = ({ name, className = 'w-6 h-6' }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
       {ICONS[name] || <path />}
     </svg>
-  );
-};
+);
 
-export default Icon;
+export default React.memo(Icon);

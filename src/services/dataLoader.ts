@@ -1,3 +1,4 @@
+
 import type { ItemDefinition, ItemEffect, Rarity, EquipmentSlot, StatEffect } from '../types';
 
 const rawCsvData = `id,name,slot,rarity,description,effects
@@ -6,19 +7,19 @@ chipped_axe,Chipped Axe,Weapon,Common,"An axe that has seen better days. The bla
 splintered_shortbow,Splintered Shortbow,Weapon,Common,"A simple wooden bow, bound with leather straps to keep it from breaking.",ATTACK_FLAT:2
 gnarled_staff,Gnarled Staff,Weapon,Common,"A twisted piece of wood that can be used for hitting things, or perhaps focusing minor magics.",ATTACK_FLAT:1;HP_FLAT:5
 steel_longsword,Steel Longsword,Weapon,Uncommon,"A well-balanced and reliable steel sword.",ATTACK_FLAT:5
-iron_warhammer,Iron Warhammer,Weapon,Uncommon,"A heavy hammer capable of denting armor.",ATTACK_FLAT:6;BONUS_DMG_VS_SIEGE:0.1
+iron_warhammer,Iron Warhammer,Weapon,Uncommon,"A heavy hammer capable of denting armor.",ATTACK_FLAT:6;BONUS_DMG_VS_SPECIAL:0.1
 elven_yew_bow,Elven Yew Bow,Weapon,Uncommon,"A finely crafted bow of yew, light and accurate.",ATTACK_FLAT:4;FIRST_STRIKE_CHANCE:0.1
 apprentice_wand,Apprentice's Wand,Weapon,Uncommon,"A simple wand carved with runes of power, it hums with a faint energy.",ATTACK_PERCENT:0.10
 orcish_cleaver,Orcish Cleaver,Weapon,Uncommon,"A brutally effective weapon, designed to hack and chop.",ATTACK_FLAT:7
 dwarven_runic_axe,Dwarven Runic Axe,Weapon,Rare,"A masterfully forged axe with runes of power that glow faintly in battle.",ATTACK_FLAT:10;DEFENSE_FLAT:5
 cogwork_repeater_crossbow,Cogwork Repeater Crossbow,Weapon,Rare,"A complex steampunk crossbow capable of firing bolts in rapid succession.",ATTACK_FLAT:8;FIRST_STRIKE_CHANCE:0.25
-sunfire_battlemace,Sunfire Battlemace,Weapon,Rare,"A mace that seems to glow with an inner light, searing foes on impact.",ATTACK_FLAT:9;BONUS_DMG_VS_INFANTRY:0.15
+sunfire_battlemace,Sunfire Battlemace,Weapon,Rare,"A mace that seems to glow with an inner light, searing foes on impact.",ATTACK_FLAT:9;BONUS_DMG_VS_MELEE:0.15
 shadow_stiletto,Shadow Stiletto,Weapon,Rare,"A thin, dark blade that seems to drink the light around it.",ATTACK_PERCENT:0.15;FIRST_STRIKE_CHANCE:0.3
 archmages_staff_of_power,Archmage's Staff of Power,Weapon,Epic,"A staff brimming with raw magical energy, topped with a flawless, floating Chrono-Crystal.",ATTACK_PERCENT:0.25;HP_FLAT:25
 blade_of_the_verdant_warden,Blade of the Verdant Warden,Weapon,Epic,"A living sword of woven wood and thorns. It slowly heals its wielder.",ATTACK_FLAT:15;HP_REGEN:1.0
-gromril_war-axe,Gromril War-Axe,Weapon,Epic,"An axe forged from near-indestructible Gromril, with a perfectly balanced, devastating head.",ATTACK_FLAT:20;BONUS_DMG_VS_SIEGE:0.25
-forgelords_hammer,"Forge-Lord's Hammer, ""World-Forger""",Weapon,Legendary,"The personal hammer of Hephaestus, said to have shaped the first automatons. It strikes with the force of a falling star.",ATTACK_FLAT:30;ATTACK_PERCENT:0.20;BONUS_DMG_VS_SIEGE:0.5
-grommashs_gorehowl,"Grommash's ""Gorehowl""",Weapon,Legendary,"A legendary axe that howls for blood in the heat of battle. Its thirst is never slaked.",ATTACK_FLAT:40;BONUS_DMG_VS_INFANTRY:0.3
+gromril_war-axe,Gromril War-Axe,Weapon,Epic,"An axe forged from near-indestructible Gromril, with a perfectly balanced, devastating head.",ATTACK_FLAT:20;BONUS_DMG_VS_SPECIAL:0.25
+forgelords_hammer,"Forge-Lord's Hammer, ""World-Forger""",Weapon,Legendary,"The personal hammer of Hephaestus, said to have shaped the first automatons. It strikes with the force of a falling star.",ATTACK_FLAT:30;ATTACK_PERCENT:0.20;BONUS_DMG_VS_SPECIAL:0.5
+grommashs_gorehowl,"Grommash's ""Gorehowl""",Weapon,Legendary,"A legendary axe that howls for blood in the heat of battle. Its thirst is never slaked.",ATTACK_FLAT:40;BONUS_DMG_VS_MELEE:0.3
 leather_jerkin,Leather Jerkin,Armor,Common,"Padded leather armor. Offers minimal protection.",HP_FLAT:10;DEFENSE_FLAT:3
 tattered_robes,Tattered Robes,Armor,Common,"Simple cloth robes, offering little more than modesty.",HP_FLAT:5;DEFENSE_FLAT:1
 chainmail_hauberk,Chainmail Hauberk,Armor,Uncommon,"A shirt of interlocking iron rings. Good against slashing attacks.",HP_FLAT:20;DEFENSE_FLAT:8
@@ -35,7 +36,7 @@ iron_ring,Iron Ring,Accessory,Common,"A simple ring of cold iron.",DEFENSE_FLAT:
 ring_of_vigor,Ring of Vigor,Accessory,Uncommon,"A simple ring that seems to warm the wearer.",HP_FLAT:15
 amulet_of_the_marksman,Amulet of the Marksman,Accessory,Uncommon,"Helps the wearer aim true.",ATTACK_FLAT:2
 troll-hide_bracers,Troll-hide Bracers,Accessory,Uncommon,"These tough bracers slowly mend themselves... and their wearer.",HP_REGEN:0.2
-clockwork_targeting_system,Clockwork Targeting System,Accessory,Rare,"A complex series of lenses and gears that helps identify weak points in enemies.",ATTACK_PERCENT:0.10;BONUS_DMG_VS_SKIRMISHER:0.2
+clockwork_targeting_system,Clockwork Targeting System,Accessory,Rare,"A complex series of lenses and gears that helps identify weak points in enemies.",ATTACK_PERCENT:0.10;BONUS_DMG_VS_RANGED:0.2
 heartstone_pendant,Heartstone Pendant,Accessory,Rare,"A fragment of a Heartstone that beats with a slow, steady rhythm, bolstering the life force of the wearer.",HP_PERCENT:0.15
 ring_of_regeneration,Ring of Regeneration,Accessory,Rare,"A magical ring that constantly works to close the wearer's wounds.",HP_REGEN:0.5
 eye_of_the_watcher_shard,Eye of the Watcher Shard,Accessory,Epic,"A shard from the great monolith. It grants its wearer a fraction of its precognitive abilities.",DEFENSE_PERCENT:0.10;FIRST_STRIKE_CHANCE:0.33
@@ -47,6 +48,10 @@ item_flux_in_a_bottle,Flux-in-a-Bottle,None,Rare,"A swirling vortex of raw magic
 item_map_to_nowhere,Map to Nowhere,None,Common,"An ancient, incomplete map that seems to change every time you look away."
 `;
 
+/**
+ * Parses a string of effects into an array of ItemEffect objects.
+ * e.g., "ATTACK_FLAT:5;HP_PERCENT:0.1" -> [{type: 'ATTACK_FLAT', value: 5}, {type: 'HP_PERCENT', value: 0.1}]
+ */
 const parseEffects = (effectsStr: string): ItemEffect[] => {
     if (!effectsStr) return [];
     return effectsStr.split(';').map(part => {
@@ -59,42 +64,47 @@ const parseEffects = (effectsStr: string): ItemEffect[] => {
     }).filter((effect): effect is ItemEffect => effect !== null && !isNaN(effect.value));
 };
 
+/**
+ * A robust CSV parser that handles quoted fields containing commas.
+ */
 const parseCsv = (csv: string): ItemDefinition[] => {
     const lines = csv.trim().split('\n');
     const headers = lines[0].split(',');
     const items: ItemDefinition[] = [];
 
+    const regex = /(?:^|,)(\"(?:[^\"]+|\"\")*\"|[^,]*)/g;
+
     for (let i = 1; i < lines.length; i++) {
-        // This regex handles comma-separated values, including those in quotes.
-        // It captures either a quoted string or a sequence of non-comma characters.
-        const values = lines[i].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
+        const row: { [key: string]: string } = {};
+        let match;
+        let fieldIndex = 0;
         
-        if (!values || values.length > headers.length) {
-            console.warn(`Skipping malformed CSV line ${i + 1}: ${lines[i]}`);
-            continue;
-        }
-
-        const itemData: any = {};
-        for (let j = 0; j < headers.length; j++) {
-            let value = values[j] || '';
-            if (value.startsWith('"') && value.endsWith('"')) {
-                // Remove quotes and handle escaped quotes ("") inside
-                value = value.slice(1, -1).replace(/""/g, '"');
+        while ((match = regex.exec(lines[i]))) {
+            if (fieldIndex < headers.length) {
+                let value = match[1];
+                if (value.startsWith('"') && value.endsWith('"')) {
+                    value = value.slice(1, -1).replace(/""/g, '"');
+                }
+                row[headers[fieldIndex]] = value;
+                fieldIndex++;
             }
-            itemData[headers[j]] = value;
         }
 
-        items.push({
-            id: itemData.id,
-            name: itemData.name,
-            slot: itemData.slot as EquipmentSlot,
-            rarity: itemData.rarity as Rarity,
-            description: itemData.description,
-            effects: parseEffects(itemData.effects),
-        });
+        if (Object.keys(row).length === headers.length) {
+            items.push({
+                id: row.id,
+                name: row.name,
+                slot: row.slot as EquipmentSlot,
+                rarity: row.rarity as Rarity,
+                description: row.description,
+                effects: parseEffects(row.effects),
+            });
+        } else {
+             console.warn(`Skipping malformed CSV line ${i + 1}: ${lines[i]}`);
+        }
     }
     return items;
 };
 
-export const ITEMS: readonly ItemDefinition[] = parseCsv(rawCsvData);
+export const ITEMS: readonly ItemDefinition[] = Object.freeze(parseCsv(rawCsvData));
 export const ITEMS_MAP = new Map(ITEMS.map(i => [i.id, i]));

@@ -1,31 +1,33 @@
 
-export interface Epoch {
-  id: string;
-  name: string;
-  synopsis: string;
-}
+
+// FIX: Removed incorrect import from './constants' which caused circular dependencies.
+// These types are defined in this file.
+
+//
+// CORE ENTITY TRAITS & DEFINITIONS
+//
 
 export interface Trait {
   id: string;
   name: string;
   type: 'Good' | 'Bad' | 'Neutral';
   description: string;
-  effects: string;
+  effects: string; // Simplified for display
 }
 
 export interface UnitTraitEffect {
-    type: 'DAMAGE_REDUCTION_PERCENT' | 'BONUS_ATTACK_VS_TRAIT' | 'CRITICAL_CHANCE' | 'HP_REGEN' | 'FIRST_STRIKE';
-    value?: number; // For percentage, flat values, or regen amount
-    traitId?: string; // For bonus vs trait
-    chance?: number; // For chance-based effects
-    multiplier?: number; // For critical hits
+  type: 'DAMAGE_REDUCTION_PERCENT' | 'BONUS_ATTACK_VS_TRAIT' | 'CRITICAL_CHANCE' | 'HP_REGEN' | 'FIRST_STRIKE';
+  value?: number;
+  traitId?: string;
+  chance?: number;
+  multiplier?: number;
 }
 
 export interface UnitTrait {
-    id: string;
-    name: string;
-    description: string;
-    effects: UnitTraitEffect[];
+  id: string;
+  name: string;
+  description: string;
+  effects: UnitTraitEffect[];
 }
 
 export interface Character {
@@ -42,19 +44,19 @@ export interface Character {
   };
 }
 
-export type FactionEffectType = 
-  'PRODUCTION_MOD' |      // Affects resource generation amount
-  'INFRASTRUCTURE_COST_MOD' | // Affects cost of building/upgrading infra
-  'UNIT_COST_MOD' |         // Affects cost of training units
-  'POP_GROWTH_MOD' |        // Affects population growth rate
-  'UNIT_STAT_MOD';          // Affects base stats of new units
+export type FactionEffectType =
+  | 'PRODUCTION_MOD'
+  | 'INFRASTRUCTURE_COST_MOD'
+  | 'UNIT_COST_MOD'
+  | 'POP_GROWTH_MOD'
+  | 'UNIT_STAT_MOD';
 
 export interface FactionTraitEffect {
-    type: FactionEffectType;
-    value: number; // e.g., 0.1 for +10%, -0.1 for -10%
-    resourceTier?: Resource['tier'];
-    unitRole?: UnitDefinition['role'];
-    stat?: 'hp' | 'atk';
+  type: FactionEffectType;
+  value: number; // e.g., 0.1 for +10%
+  resourceTier?: Resource['tier'];
+  unitRole?: UnitRole;
+  stat?: 'hp' | 'atk';
 }
 
 export interface FactionTrait {
@@ -66,7 +68,7 @@ export interface FactionTrait {
 export type FactionArchetype = 'Industrial' | 'Nature' | 'Holy' | 'Shadow' | 'Mountain' | 'Undead' | 'Nomadic';
 
 export interface Faction {
-  id:string;
+  id: string;
   name: string;
   color: string;
   traits: FactionTrait[];
@@ -80,18 +82,21 @@ export interface Faction {
   techTreeId: string;
 }
 
+//
+// WORLD & MAP DEFINITIONS
+//
+
 export interface TerrainEffect {
   description: string;
   appliesTo: {
     factionArchetype?: FactionArchetype;
-    unitRole?: UnitDefinition['role'];
+    unitRole?: UnitRole;
   };
   effects: {
     stat: 'atk' | 'def';
-    modifier: number; // e.g., 0.1 for +10%, -0.1 for -10%
+    modifier: number;
   }[];
 }
-
 
 export interface Biome {
   id: string;
@@ -109,31 +114,42 @@ export interface Resource {
   biomes?: string[];
   assetId: string;
   rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
-  respawnTime?: number; // In ticks. Undefined means it does not respawn.
+  respawnTime?: number;
 }
+
+//
+// ITEM & EQUIPMENT SYSTEM
+//
 
 export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 export type EquipmentSlot = 'Weapon' | 'Armor' | 'Accessory' | 'None';
-export type StatEffect = 
-  | 'HP_FLAT' | 'HP_PERCENT' 
+
+export type StatEffect =
+  | 'HP_FLAT' | 'HP_PERCENT'
   | 'ATTACK_FLAT' | 'ATTACK_PERCENT'
   | 'DEFENSE_FLAT' | 'DEFENSE_PERCENT'
-  | 'BONUS_DMG_VS_INFANTRY' | 'BONUS_DMG_VS_SKIRMISHER' | 'BONUS_DMG_VS_SIEGE'
+  | 'BONUS_DMG_VS_MELEE' | 'BONUS_DMG_VS_RANGED' | 'BONUS_DMG_VS_SPECIAL'
   | 'FIRST_STRIKE_CHANCE' | 'HP_REGEN';
 
 export interface ItemEffect {
-    type: StatEffect;
-    value: number;
+  type: StatEffect;
+  value: number;
 }
 
 export interface ItemDefinition {
-    id: string;
-    name: string;
-    description: string;
-    rarity: Rarity;
-    slot: EquipmentSlot;
-    effects: ItemEffect[];
+  id: string;
+  name: string;
+  description: string;
+  rarity: Rarity;
+  slot: EquipmentSlot;
+  effects: ItemEffect[];
 }
+
+//
+// UNIT & INFRASTRUCTURE DEFINITIONS
+//
+
+export type UnitRole = 'Worker' | 'Melee' | 'Ranged' | 'Special' | 'Support' | 'Hero';
 
 export interface UnitDefinition {
   id: string;
@@ -142,43 +158,11 @@ export interface UnitDefinition {
   hp: number;
   atk: number;
   defense: number;
-  role: 'Worker' | 'Infantry' | 'Skirmisher' | 'Siege' | 'Support' | 'Hero';
+  role: UnitRole;
   assetId: string;
   cost: Record<string, number>;
   tier: number;
   traitIds?: string[];
-}
-
-export interface CombatLogEntry {
-  tick: number;
-  opponentUnitId: string;
-  opponentFactionId: string;
-  damageDealt: number;
-  damageTaken: number;
-  isFatalToOpponent: boolean;
-  isFatalToSelf: boolean;
-}
-
-export interface UnitInstance {
-  id: number;
-  unitId: string;
-  factionId: string;
-  hp: number;
-  x: number;
-  y: number;
-  level: number;
-  xp: number;
-  killCount: number;
-  adventureTicks?: number;
-  buildTicks?: number;
-  combatLog: CombatLogEntry[];
-  inventory: ItemDefinition[];
-  equipment: {
-    Weapon: ItemDefinition | null;
-    Armor: ItemDefinition | null;
-    Accessory: ItemDefinition | null;
-  };
-  currentActivity: string;
 }
 
 export interface Infrastructure {
@@ -208,6 +192,42 @@ export interface WorldEvent {
   description: string;
 }
 
+//
+// DYNAMIC GAME STATE INSTANCES
+//
+
+export interface CombatLogEntry {
+  tick: number;
+  opponentUnitId: string;
+  opponentFactionId: string;
+  damageDealt: number;
+  damageTaken: number;
+  isFatalToOpponent: boolean;
+  isFatalToSelf: boolean;
+}
+
+export interface UnitInstance {
+  id: number;
+  unitId: string;
+  factionId: string;
+  hp: number;
+  x: number;
+  y: number;
+  level: number;
+  xp: number;
+  killCount: number;
+  adventureTicks?: number;
+  combatLog: CombatLogEntry[];
+  inventory: ItemDefinition[];
+  equipment: {
+    Weapon: ItemDefinition | null;
+    Armor: ItemDefinition | null;
+    Accessory: ItemDefinition | null;
+  };
+  currentActivity: string;
+  buildTicks?: number;
+}
+
 export interface TileData {
   x: number;
   y: number;
@@ -218,47 +238,29 @@ export interface TileData {
   units: UnitInstance[];
   worldEventId?: string;
   partOfInfrastructure?: { rootX: number, rootY: number };
-  resourceCooldown?: number; // Tick when this tile can respawn a resource.
   loot?: ItemDefinition[];
   hp?: number;
   maxHp?: number;
   resourceCache?: Record<string, number>;
+  resourceCooldown?: number;
 }
 
 export enum GameEventType {
-    BATTLE,
-    LOOT,
-    UPGRADE,
-    LEVEL_MILESTONE,
-    FACTION_ELIMINATED,
-    WAR_DECLARED,
-    ALLIANCE_FORMED,
+  BATTLE,
+  LOOT,
+  UPGRADE,
+  LEVEL_MILESTONE,
+  FACTION_ELIMINATED,
+  WAR_DECLARED,
+  ALLIANCE_FORMED,
 }
 
 export interface GameEvent {
-    id: number;
-    tick: number;
-    type: GameEventType;
-    message: string;
-    location: { x: number, y: number };
-}
-
-export interface GameState {
-  world: TileData[][];
-  factions: Record<string, FactionState>;
-  gameTime: {
-    tick: number;
-    year: number;
-    epoch: string;
-  };
-  selectedTile: { x: number; y: number } | null;
-  selectedUnitId: number | null;
-  nextUnitId: number;
-  attackFlashes: Record<number, number>; // Key: unit.id, Value: tick
-  dyingUnits: (UnitInstance & { deathTick: number })[];
-  eventLog: GameEvent[];
-  nextEventId: number;
-  totalMintedAthar: number;
+  id: number;
+  tick: number;
+  type: GameEventType;
+  message: string;
+  location: { x: number, y: number };
 }
 
 export type DiplomaticStatus = 'War' | 'Neutral' | 'Alliance';
@@ -269,8 +271,8 @@ export interface DiplomaticRelation {
 }
 
 export interface StorageTierData {
-    current: number;
-    capacity: number;
+  current: number;
+  capacity: number;
 }
 
 export interface FactionState {
@@ -284,16 +286,38 @@ export interface FactionState {
   population: number;
   leaderStatus: 'settled' | 'adventuring';
   diplomacy: Record<string, DiplomaticRelation>;
-  isEliminated: boolean;
+  isEliminated?: boolean;
 }
 
+export interface GameState {
+  world: TileData[][];
+  factions: Record<string, FactionState>;
+  gameTime: {
+    tick: number;
+    year: number;
+    epoch: string;
+  };
+  selectedTile: { x: number; y: number } | null;
+  selectedUnitId: number | null;
+  nextUnitId: number;
+  attackFlashes: Record<number, number>;
+  dyingUnits: (UnitInstance & { deathTick: number })[];
+  eventLog: GameEvent[];
+  nextEventId: number;
+  totalMintedAthar: number;
+}
+
+//
+// UTILITY & SYSTEM TYPES
+//
+
 export interface TechNode {
-    id: string;
-    name: string;
-    tier: number;
-    cost: number;
-    prerequisites: string[];
-    effect: string;
+  id: string;
+  name: string;
+  tier: number;
+  cost: number;
+  prerequisites: string[];
+  effect: string;
 }
 
 export interface SoundManager {

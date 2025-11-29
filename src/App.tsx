@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+// FIX: Corrected GamePhase type usage
 import type { GameState, TileData, GamePhase } from './types';
 import { generateInitialGameState } from './services/worldGenerator';
 import { useGameLoop } from './hooks/useGameLoop';
@@ -9,6 +11,7 @@ import GameMap from './components/GameMap';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import EventTicker from './components/EventTicker';
+// FIX: Added imports for new color map constants
 import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE, FACTIONS_MAP, FACTION_COLOR_HEX_MAP, FACTION_COLOR_RGB_MAP } from './constants';
 import IntroVideo from './components/IntroVideo';
 import StartMenu from './components/StartMenu';
@@ -17,6 +20,7 @@ import LoadingScreen from './components/LoadingScreen';
 import { useAssetLoader } from './hooks/useAssetLoader';
 import { ASSET_PATHS } from './assets';
 import HelpModal from './components/HelpModal';
+import SaveConfirmationDialog from './components/SaveConfirmationDialog';
 
 
 const TILE_WIDTH = 128;
@@ -27,11 +31,13 @@ const App: React.FC = () => {
   const [gameSpeed, setGameSpeed] = useState(1);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(true);
+  // FIX: Updated GamePhase to handle login and loading states.
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [username, setUsername] = useState('');
   const [saveExists, setSaveExists] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isFirstTimeSession, setIsFirstTimeSession] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   
   const targetPanRef = useRef({ x: 0, y: 0 });
   const hasPannedToStartRef = useRef(false);
@@ -57,6 +63,12 @@ const App: React.FC = () => {
             setSaveExists(!!savedGame);
         }
     }, [username, getSaveKey]);
+
+    useEffect(() => {
+        const preventContextMenu = (e: MouseEvent) => e.preventDefault();
+        document.addEventListener('contextmenu', preventContextMenu);
+        return () => document.removeEventListener('contextmenu', preventContextMenu);
+    }, []);
 
   const handleLogin = useCallback((name: string) => {
     setUsername(name);
@@ -144,7 +156,8 @@ const App: React.FC = () => {
                 const gameStateString = JSON.stringify(gameState);
                 localStorage.setItem(getSaveKey(), gameStateString);
                 setSaveExists(true);
-                console.log('Game Saved!');
+                setShowSaveConfirm(true);
+                setTimeout(() => setShowSaveConfirm(false), 2000);
             } catch (error) {
                 console.error("Failed to save game state:", error);
             }
@@ -155,6 +168,7 @@ const App: React.FC = () => {
         const initialState = generateInitialGameState();
         setGameState(initialState);
         soundManager.initializeAudio();
+        // FIX: Set game phase to 'loading'
         setGamePhase('loading');
         hasPannedToStartRef.current = false;
         setIsHelpOpen(true);
@@ -169,6 +183,7 @@ const App: React.FC = () => {
                     const savedGameState = JSON.parse(savedGameString);
                     setGameState(savedGameState);
                     soundManager.initializeAudio();
+                    // FIX: Set game phase to 'loading'
                     setGamePhase('loading');
                     hasPannedToStartRef.current = false;
                     setIsFirstTimeSession(false);
@@ -195,10 +210,12 @@ const App: React.FC = () => {
   }, [soundManager, initialPan]);
   
   const allAssetUrls = useMemo(() => Object.values(ASSET_PATHS), []);
+  // FIX: Corrected comparison logic for game phase
   const shouldLoadAssets = gamePhase === 'loading';
   const { isLoading: isGameLoading, progress, loadingMessage } = useAssetLoader(allAssetUrls, shouldLoadAssets);
 
   useEffect(() => {
+      // FIX: Corrected comparison logic for game phase
       if (!isGameLoading && gamePhase === 'loading') {
           setGamePhase('playing');
       }
@@ -219,8 +236,8 @@ const App: React.FC = () => {
         const tile = gameState.world[gameState.selectedTile.y][gameState.selectedTile.x];
         if (tile) {
             if (tile.partOfInfrastructure) {
-                const rootTile = gameState.world[tile.partOfInfrastructure.rootY][tile.partOfInfrastructure.rootX];
-                factionId = rootTile.ownerFactionId;
+                const rootTile = gameState.world[tile.partOfInfrastructure.rootY]?.[tile.partOfInfrastructure.rootX];
+                factionId = rootTile?.ownerFactionId;
             } else {
                 factionId = tile.ownerFactionId;
             }
@@ -317,15 +334,18 @@ const App: React.FC = () => {
 
 
   const renderGameContent = () => {
+    // FIX: Set phase to 'login' after intro.
     if (gamePhase === 'intro') {
       return <IntroVideo onFinish={() => setGamePhase('login')} />;
     }
+    // FIX: Corrected game phase check for login screen.
     if (gamePhase === 'login') {
         return <LoginScreen onLogin={handleLogin} />
     }
     if (gamePhase === 'menu') {
       return <StartMenu username={username} onNewGame={handleNewGame} onLoadGame={handleLoadGame} saveExists={saveExists} />;
     }
+    // FIX: Corrected game phase check for loading screen.
     if (gamePhase === 'loading') {
         return <LoadingScreen progress={progress} loadingMessage={loadingMessage} />;
     }
@@ -346,6 +366,7 @@ const App: React.FC = () => {
               onSelectFaction={handleSelectFaction}
             />
             <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
+            <SaveConfirmationDialog show={showSaveConfirm} />
           </main>
           <Sidebar
             selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y][gameState.selectedTile.x] : null}

@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import type { FactionState } from '../types';
 import { FACTIONS_MAP } from '../constants';
@@ -18,12 +19,11 @@ const FactionsListDialog: React.FC<FactionsListDialogProps> = ({ factions, onSel
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
   const sortedFactionIds = Object.keys(factions)
+    .filter(id => !factions[id].isEliminated)
     .sort((a, b) => {
         const factionA = FACTIONS_MAP.get(a);
         const factionB = FACTIONS_MAP.get(b);
@@ -37,12 +37,11 @@ const FactionsListDialog: React.FC<FactionsListDialogProps> = ({ factions, onSel
       className="absolute top-full right-0 mt-2 w-64 bg-gray-900/80 backdrop-blur-md rounded-lg shadow-2xl border border-cyan-500/50 z-50 pop-in"
     >
       <div className="p-2">
-        <h3 className="text-lg font-cinzel text-cyan-300 px-2 pb-2 border-b border-cyan-500/30">Factions</h3>
+        <h3 className="text-lg font-cinzel text-cyan-300 px-2 pb-2 border-b border-cyan-500/30">Active Factions</h3>
         <ul className="mt-2 space-y-1 max-h-96 overflow-y-auto">
           {sortedFactionIds.map((factionId) => {
             const factionInfo = FACTIONS_MAP.get(factionId);
             if (!factionInfo || factionInfo.id === 'neutral_hostile') return null;
-
             return (
               <li key={factionId}>
                 <button

@@ -1,3 +1,4 @@
+
 const GITHUB_SOUND_BASE_URL = 'https://cdn.jsdelivr.net/gh/wiwitmikael-a11y/atharium-sounds@main/';
 
 const getSoundUrl = (fileName: string) => `${GITHUB_SOUND_BASE_URL}${fileName}`;

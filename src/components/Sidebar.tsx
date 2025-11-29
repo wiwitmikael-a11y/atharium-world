@@ -1,8 +1,12 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+// FIX: Added new types to support equipment and item displays.
 import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, Faction, FactionEffectType, ItemDefinition, StatEffect, EquipmentSlot } from '../types';
-import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNITS, XP_PER_LEVEL, STAT_INCREASE_PER_LEVEL, RARITY_COLORS } from '../constants';
+// FIX: Added XP_PER_LEVEL and RARITY_COLORS to imports.
+import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNITS, XP_PER_LEVEL, RARITY_COLORS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
+import { getUnitStats } from '../utils/unit';
 
 interface SidebarProps {
   selectedTile: TileData | null;
@@ -22,30 +26,15 @@ const getStatusStyles = (status: DiplomaticStatus): { color: string, icon: strin
     }
 }
 
-const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType, filter?: any): number => {
-    let modifier = 0;
-    if (!factionInfo.traits) return 0;
-    for (const trait of factionInfo.traits) {
-        for (const effect of trait.effects) {
-            if (effect.type === effectType) {
-                if (filter?.unitRole && effect.unitRole && filter.unitRole !== effect.unitRole) continue;
-                if (filter?.stat && effect.stat && filter.stat !== effect.stat) continue;
-                modifier += effect.value;
-            }
-        }
-    }
-    return modifier;
-};
-
-const ItemTooltip: React.FC<{item: ItemDefinition, targetRef: React.RefObject<HTMLElement>}> = ({ item, targetRef }) => {
+const ItemTooltip: React.FC<{item: ItemDefinition, targetElement: HTMLElement}> = ({ item, targetElement }) => {
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState({ top: -9999, left: 0 });
 
     useEffect(() => {
-        if (targetRef.current && tooltipRef.current) {
-            const targetRect = targetRef.current.getBoundingClientRect();
+        if (targetElement && tooltipRef.current) {
+            const targetRect = targetElement.getBoundingClientRect();
             const tooltipRect = tooltipRef.current.getBoundingClientRect();
-            const sidebar = targetRef.current.closest('aside');
+            const sidebar = targetElement.closest('aside');
             if (!sidebar) return;
 
             const sidebarRect = sidebar.getBoundingClientRect();
@@ -58,7 +47,7 @@ const ItemTooltip: React.FC<{item: ItemDefinition, targetRef: React.RefObject<HT
 
             setPosition({ top, left });
         }
-    }, [targetRef]);
+    }, [targetElement]);
 
     const formatEffect = (type: StatEffect, value: number): string => {
         const sign = value > 0 ? '+' : '';
@@ -91,74 +80,11 @@ const ItemTooltip: React.FC<{item: ItemDefinition, targetRef: React.RefObject<HT
 const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ unit, onBack }) => {
     const unitDef = UNITS_MAP.get(unit.unitId);
     const faction = FACTIONS_MAP.get(unit.factionId);
-    const [hoveredItem, setHoveredItem] = useState<ItemDefinition | null>(null);
-    const itemRefs = useRef<Record<string, HTMLElement | null>>({});
+    const [hoveredItem, setHoveredItem] = useState<{ item: ItemDefinition; element: HTMLElement } | null>(null);
 
     if (!unitDef || !faction) return null;
 
-    const { maxHp, attack, defense, bonusHp, bonusAtk, bonusDef } = useMemo(() => {
-        const unitDef = UNITS_MAP.get(unit.unitId)!;
-        const factionInfo = FACTIONS_MAP.get(unit.factionId)!;
-    
-        let baseHp = unitDef.hp;
-        let baseAtk = unitDef.atk;
-        let baseDef = unitDef.defense;
-    
-        // Apply Faction Traits
-        const hpFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
-        const totalHpFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
-        baseHp *= (1 + hpFactionMod + totalHpFactionMod);
-    
-        const atkFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'atk' });
-        const totalAtkFactionMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'atk' });
-        baseAtk *= (1 + atkFactionMod + totalAtkFactionMod);
-        
-        // Apply Level Bonus
-        const level = unit.level || 1;
-        if (level > 1) {
-            const bonus = 1 + (level - 1) * STAT_INCREASE_PER_LEVEL;
-            baseHp *= bonus;
-            baseAtk *= bonus;
-        }
-
-        const statBonuses = {
-            flatHp: 0, flatAtk: 0, flatDef: 0,
-            percentHp: 0, percentAtk: 0, percentDef: 0
-        };
-
-        const allEquipment = Object.values(unit.equipment).filter(Boolean) as ItemDefinition[];
-        for (const item of allEquipment) {
-            for (const effect of item.effects) {
-                switch(effect.type) {
-                    case 'HP_FLAT': statBonuses.flatHp += effect.value; break;
-                    case 'ATTACK_FLAT': statBonuses.flatAtk += effect.value; break;
-                    case 'DEFENSE_FLAT': statBonuses.flatDef += effect.value; break;
-                    case 'HP_PERCENT': statBonuses.percentHp += effect.value; break;
-                    case 'ATTACK_PERCENT': statBonuses.percentAtk += effect.value; break;
-                    case 'DEFENSE_PERCENT': statBonuses.percentDef += effect.value; break;
-                }
-            }
-        }
-    
-        const finalMaxHp = Math.floor((baseHp + statBonuses.flatHp) * (1 + statBonuses.percentHp));
-        const finalAttack = Math.floor((baseAtk + statBonuses.flatAtk) * (1 + statBonuses.percentAtk));
-        const finalDefense = Math.floor((baseDef + statBonuses.flatDef) * (1 + statBonuses.percentDef));
-        
-        const baseStatsAfterMods = {
-            hp: Math.floor(baseHp),
-            atk: Math.floor(baseAtk),
-            def: Math.floor(baseDef)
-        };
-
-        return {
-            maxHp: finalMaxHp,
-            attack: finalAttack,
-            defense: finalDefense,
-            bonusHp: finalMaxHp - baseStatsAfterMods.hp,
-            bonusAtk: finalAttack - baseStatsAfterMods.atk,
-            bonusDef: finalDefense - baseStatsAfterMods.def,
-        };
-    }, [unit]);
+    const { maxHp, attack, defense, bonusHp, bonusAtk, bonusDef } = useMemo(() => getUnitStats(unit), [unit]);
 
     const xpPercentage = (unit.xp / XP_PER_LEVEL) * 100;
     
@@ -170,7 +96,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
 
     return (
         <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 h-full flex flex-col">
-            {hoveredItem && itemRefs.current[hoveredItem.id] && <ItemTooltip item={hoveredItem} targetRef={{ current: itemRefs.current[hoveredItem.id] }} />}
+            {hoveredItem && <ItemTooltip item={hoveredItem.item} targetElement={hoveredItem.element} />}
 
             <div className="flex justify-between items-center border-b-2 pb-2 mb-3" style={{borderColor: `rgba(var(--selection-glow-rgb), 0.5)`}}>
                  <h3 className="text-xl font-bold" style={{color: `rgba(var(--selection-glow-rgb), 1)`}}>Unit Details</h3>
@@ -204,7 +130,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                 </div>
                 <div>
                     <p className="text-sm text-gray-400">Defense</p>
-                    <p className="text-lg font-mono font-bold">{defense}% {bonusDef > 0 && <span className="text-green-400">(+{bonusDef}%)</span>}</p>
+                    <p className="text-lg font-mono font-bold">{defense} {bonusDef > 0 && <span className="text-green-400">(+{bonusDef})</span>}</p>
                 </div>
             </div>
 
@@ -218,8 +144,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                                 <div key={slot} className="flex items-center bg-black/20 p-2 rounded">
                                     <Icon name={icon} className="w-6 h-6 text-cyan-400 mr-3" />
                                     <div 
-                                        ref={el => { itemRefs.current[item?.id || slot] = el; }}
-                                        onMouseEnter={() => item && setHoveredItem(item)}
+                                        onMouseEnter={(e) => item && setHoveredItem({ item, element: e.currentTarget as HTMLElement })}
                                         onMouseLeave={() => setHoveredItem(null)}
                                         className="flex-1"
                                     >
@@ -239,8 +164,7 @@ const UnitDetailView: React.FC<{unit: UnitInstance, onBack: () => void}> = ({ un
                             {unit.inventory.map((item: ItemDefinition, index) => (
                                 <li 
                                     key={`${item.id}-${index}`} 
-                                    ref={el => { itemRefs.current[`inv-${item.id}-${index}`] = el; }}
-                                    onMouseEnter={() => setHoveredItem(item)}
+                                    onMouseEnter={(e) => setHoveredItem({ item, element: e.currentTarget as HTMLElement })}
                                     onMouseLeave={() => setHoveredItem(null)}
                                     className={`bg-black/20 p-2 rounded ${RARITY_COLORS[item.rarity]}`}
                                 >

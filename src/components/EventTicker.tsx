@@ -21,11 +21,8 @@ const EVENT_ICONS: Record<GameEventType, { icon: string; color: string; }> = {
   [GameEventType.ALLIANCE_FORMED]: { icon: 'alliance', color: 'text-green-400' },
 };
 
-
 const EventTicker: React.FC<EventTickerProps> = ({ events, onEventClick }) => {
-  if (events.length === 0) {
-    return null;
-  }
+  if (events.length === 0) return null;
 
   return (
     <div className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 bg-black/60 backdrop-blur-sm z-30 p-2 overflow-hidden flex flex-col">
@@ -33,12 +30,14 @@ const EventTicker: React.FC<EventTickerProps> = ({ events, onEventClick }) => {
        <ul className="flex-1 overflow-y-auto pr-2">
             {events.map((event) => {
                 const eventMeta = EVENT_ICONS[event.type] || { icon: 'cube', color: 'text-gray-400' };
+                const canJump = event.location.x >= 0 && event.location.y >= 0;
+
                 return (
                     <li 
                         key={event.id}
-                        className="text-gray-300 text-xs sm:text-sm mb-1 p-1 rounded hover:bg-gray-700/80 cursor-pointer transition-colors flex items-center justify-between"
-                        onClick={() => onEventClick(event.location)}
-                        title={`Click to jump to location (${event.location.x}, ${event.location.y})`}
+                        className={`text-gray-300 text-xs sm:text-sm mb-1 p-1 rounded transition-colors flex items-center justify-between ${canJump ? 'hover:bg-gray-700/80 cursor-pointer' : ''}`}
+                        onClick={() => canJump && onEventClick(event.location)}
+                        title={canJump ? `Click to jump to location (${event.location.x}, ${event.location.y})` : undefined}
                     >
                         <div className="flex items-center flex-1 min-w-0">
                             <Icon name={eventMeta.icon} className={`w-4 h-4 ${eventMeta.color} flex-shrink-0 mr-2`} />

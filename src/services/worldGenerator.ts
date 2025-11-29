@@ -1,46 +1,48 @@
 
 import { WORLD_SIZE, BIOMES, RESOURCES, FACTIONS, CHARACTERS, WORLD_EVENTS, UNITS, FACTIONS_MAP, INFRASTRUCTURE_MAP, RESOURCES_MAP, RESOURCE_SPAWN_CHANCES, STARTING_YEAR, INFRA_HP_COST_MULTIPLIER } from '../constants';
-import type { TileData, GameState, FactionState, Faction, FactionEffectType, UnitDefinition, ResourceTier, UnitInstance } from '../types';
+import type { TileData, GameState, FactionState, Faction, UnitDefinition, ResourceTier, UnitInstance, ItemDefinition, Infrastructure } from '../types';
+import { ITEMS, ITEMS_MAP } from './dataLoader';
+import { getFactionModifier } from '../utils/faction';
+import { getUnitStats } from '../utils/unit';
 
-function getRandomInt(min: number, max: number): number {
+const getRandomInt = (min: number, max: number): number => {
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-const getFactionModifier = (factionInfo: Faction, effectType: FactionEffectType, filter?: any): number => {
-    let modifier = 0;
-    if (!factionInfo.traits) return 0;
-    for (const trait of factionInfo.traits) {
-        for (const effect of trait.effects) {
-            if (effect.type === effectType) {
-                if (filter?.unitRole && effect.unitRole && filter.unitRole !== effect.unitRole) continue;
-                if (filter?.stat && effect.stat && filter.stat !== effect.stat) continue;
-                modifier += effect.value;
-            }
-        }
+const createUnit = (id: number, unitDef: UnitDefinition, factionInfo: Faction, x: number, y: number): UnitInstance => {
+    const equipment: UnitInstance['equipment'] = { Weapon: null, Armor: null, Accessory: null };
+    let defaultWeapon: ItemDefinition | undefined;
+
+    switch(unitDef.role) {
+        case 'Worker': defaultWeapon = ITEMS_MAP.get('chipped_axe'); break;
+        case 'Melee': defaultWeapon = ITEMS_MAP.get('rusty_shortsword'); break;
+        case 'Ranged': defaultWeapon = ITEMS_MAP.get('splintered_shortbow'); break;
+        case 'Support': case 'Hero': default: defaultWeapon = ITEMS_MAP.get('gnarled_staff'); break;
     }
-    return modifier;
-};
+    
+    if (defaultWeapon) equipment.Weapon = defaultWeapon;
 
-const getInitialHp = (unitDef: UnitDefinition, factionInfo: Faction): number => {
-    const hpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { unitRole: unitDef.role, stat: 'hp' });
-    const totalHpMod = getFactionModifier(factionInfo, 'UNIT_STAT_MOD', { stat: 'hp' });
-    return Math.floor(unitDef.hp * (1 + hpMod + totalHpMod));
-};
+    const newUnit: UnitInstance = {
+        id, unitId: unitDef.id, factionId: factionInfo.id, hp: 0, x, y,
+        level: 1, xp: 0, killCount: 0, combatLog: [],
+        inventory: [], equipment, currentActivity: 'Guarding',
+    };
+    // Set HP based on stats with equipment
+    newUnit.hp = getUnitStats(newUnit).maxHp;
+    return newUnit;
+}
 
-function createEmptyWorld(): TileData[][] {
+const createEmptyWorld = (): TileData[][] => {
   return Array.from({ length: WORLD_SIZE }, (_, y) =>
     Array.from({ length: WORLD_SIZE }, (_, x) => ({
-      x,
-      y,
-      biomeId: BIOMES[0].id,
-      units: [],
+      x, y, biomeId: BIOMES[0].id, units: [],
     }))
   );
 }
 
-function generateNoiseMap(size: number, passes: number): number[][] {
+const generateNoiseMap = (size: number, passes: number): number[][] => {
     let map = Array.from({ length: size }, () => Array.from({ length: size }, () => Math.random()));
     for (let pass = 0; pass < passes; pass++) {
         const newMap = JSON.parse(JSON.stringify(map));
@@ -63,24 +65,22 @@ function generateNoiseMap(size: number, passes: number): number[][] {
     return map;
 }
 
-function placeBiomes(world: TileData[][]): void {
+const placeBiomes = (world: TileData[][]) => {
     const elevationMap = generateNoiseMap(WORLD_SIZE, 4);
     const humidityMap = generateNoiseMap(WORLD_SIZE, 4);
     const magicMap = generateNoiseMap(WORLD_SIZE, 5);
     for (let y = 0; y < WORLD_SIZE; y++) {
         for (let x = 0; x < WORLD_SIZE; x++) {
-            const elevation = elevationMap[y][x];
-            const humidity = humidityMap[y][x];
-            const magic = magicMap[y][x];
-            if (magic > 0.75) world[y][x].biomeId = 'atharium_wastes';
-            else if (elevation > 0.6) world[y][x].biomeId = humidity > 0.5 ? 'tundra' : 'ashlands';
-            else if (elevation < 0.4) world[y][x].biomeId = humidity > 0.5 ? 'gloomwell' : 'wasteland';
-            else world[y][x].biomeId = humidity > 0.55 ? 'gloomwell' : 'verdant';
+            const e = elevationMap[y][x]; const h = humidityMap[y][x]; const m = magicMap[y][x];
+            if (m > 0.75) world[y][x].biomeId = 'atharium_wastes';
+            else if (e > 0.6) world[y][x].biomeId = h > 0.5 ? 'tundra' : 'ashlands';
+            else if (e < 0.4) world[y][x].biomeId = h > 0.5 ? 'gloomwell' : 'wasteland';
+            else world[y][x].biomeId = h > 0.55 ? 'gloomwell' : 'verdant';
         }
     }
 }
 
-function placeResources(world: TileData[][]): void {
+const placeResources = (world: TileData[][]) => {
   const rawResources = RESOURCES.filter(r => r.tier === 'Raw');
   for (let y = 0; y < WORLD_SIZE; y++) {
     for (let x = 0; x < WORLD_SIZE; x++) {
@@ -96,113 +96,114 @@ function placeResources(world: TileData[][]): void {
   }
 }
 
-function placeWorldEvents(world: TileData[][]): void {
+const placeWorldEvents = (world: TileData[][]) => {
     const discoveries = WORLD_EVENTS.filter(e => e.type === 'Discovery');
-    let placedCount = 0;
-    const maxEvents = 2;
-    while (placedCount < maxEvents && discoveries.length > 0) {
+    for(let i=0; i<2; i++) {
+        if(discoveries.length === 0) break;
         const eventToPlace = discoveries.splice(getRandomInt(0, discoveries.length - 1), 1)[0];
         let placed = false; let attempts = 0;
         while (!placed && attempts < 100) {
             const x = getRandomInt(0, WORLD_SIZE - 1);
             const y = getRandomInt(0, WORLD_SIZE - 1);
-            const tile = world[y][x];
-            if (!tile.worldEventId && !tile.infrastructureId && !tile.resourceId && !tile.ownerFactionId) {
+            const tile = world[y]?.[x];
+            if (tile && !tile.worldEventId && !tile.infrastructureId && !tile.resourceId && !tile.ownerFactionId) {
                 tile.worldEventId = eventToPlace.id;
                 placed = true;
             }
             attempts++;
         }
-        if (placed) placedCount++;
     }
 }
 
-function createUnit(id: number, unitDef: UnitDefinition, factionInfo: Faction, x: number, y: number): UnitInstance {
-    return {
-        id, unitId: unitDef.id, factionId: factionInfo.id, hp: getInitialHp(unitDef, factionInfo), x, y,
-        level: 1, xp: 0, killCount: 0, combatLog: [],
-        inventory: [],
-        equipment: { Weapon: null, Armor: null, Accessory: null },
-        currentActivity: 'Guarding',
-    };
+const placeInitialLoot = (world: TileData[][]) => {
+    const commonItems = ITEMS.filter(item => item.rarity === 'Common' && item.slot !== 'None');
+    if(commonItems.length === 0) return;
+    for(let i=0; i<5; i++) {
+        let placed = false; let attempts = 0;
+        while (!placed && attempts < 100) {
+            const x = getRandomInt(0, WORLD_SIZE - 1);
+            const y = getRandomInt(0, WORLD_SIZE - 1);
+            const tile = world[y]?.[x];
+            if (tile && !tile.worldEventId && !tile.infrastructureId && !tile.resourceId && !tile.ownerFactionId && !tile.loot) {
+                tile.loot = [commonItems[getRandomInt(0, commonItems.length - 1)]];
+                placed = true;
+            }
+            attempts++;
+        }
+    }
 }
 
-function placeFactions(world: TileData[][], factions: Record<string, FactionState>): number {
-    const factionIds = Object.keys(factions);
+const placeFactions = (world: TileData[][], factions: Record<string, FactionState>): number => {
     let unitIdCounter = 0;
-    const SETTLEMENT_RADIUS = 5;
+    const factionIds = Object.keys(factions);
     const numFactions = factionIds.length;
     const center = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
-    const radius = Math.min(center.x, center.y) - 5;
-    const startingPoints = factionIds.map((_, index) => {
-        const angle = (2 * Math.PI / numFactions) * index;
-        return { x: Math.round(center.x + radius * Math.cos(angle)), y: Math.round(center.y + radius * Math.sin(angle)) };
-    });
-
+    const radius = Math.min(center.x, center.y) - 10;
+    
     factionIds.forEach((factionId, index) => {
-        const factionInfo = FACTIONS_MAP.get(factionId);
-        if (!factionInfo) return;
-        let placed = false; let attempts = 0;
-        const startX = startingPoints[index].x;
-        const startY = startingPoints[index].y;
-        let searchRadius = 0;
-        while (!placed && attempts < 500) {
-            let foundSpot = false;
-            for (let dy = -searchRadius; dy <= searchRadius; dy++) {
-                for (let dx = -searchRadius; dx <= searchRadius; dx++) {
-                    if (searchRadius > 0 && Math.abs(dx) < searchRadius && Math.abs(dy) < searchRadius) continue;
+        const factionInfo = FACTIONS_MAP.get(factionId)!;
+        const angle = (2 * Math.PI / numFactions) * index;
+        const startX = Math.round(center.x + radius * Math.cos(angle));
+        const startY = Math.round(center.y + radius * Math.sin(angle));
+
+        let placed = false;
+        for (let r = 0; r < 15 && !placed; r++) { // Search in expanding radius
+            for (let dy = -r; dy <= r; dy++) {
+                if(placed) break;
+                for (let dx = -r; dx <= r; dx++) {
+                    if(placed) break;
+                    if (r > 0 && Math.abs(dx) < r && Math.abs(dy) < r) continue;
+                    
                     const x = startX + dx;
                     const y = startY + dy;
                     
-                    if (x < 0 || x >= WORLD_SIZE - 1 || y < 0 || y >= WORLD_SIZE - 1) continue;
+                    const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet')!;
+                    const {width, height} = hamletDef.multiTile!;
                     
-                    const rootTile = world[y][x];
-                    const isPreferredBiome = factionInfo.preferredBiomes.length === 0 || factionInfo.preferredBiomes.includes(rootTile.biomeId);
-                    
-                    const tilesToCheck = [world[y]?.[x], world[y+1]?.[x], world[y]?.[x+1], world[y+1]?.[x+1]];
-                    if (tilesToCheck.some(t => t === undefined)) continue;
-
-                    const areaIsEmpty = tilesToCheck.every(t => t && !t.ownerFactionId && !t.infrastructureId && !t.worldEventId && !t.resourceId && !t.partOfInfrastructure);
-                    
-                    if (isPreferredBiome && areaIsEmpty) {
-                        const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet')!;
-                        const maxHp = (Object.values(hamletDef.upgradeCost!).reduce((s, a) => s + a, 0)) * INFRA_HP_COST_MULTIPLIER;
-                        
-                        rootTile.ownerFactionId = factionId;
-                        rootTile.infrastructureId = 'settlement_hamlet';
-                        rootTile.hp = maxHp;
-                        rootTile.maxHp = maxHp;
-
-                        world[y+1][x].partOfInfrastructure = { rootX: x, rootY: y };
-                        world[y][x+1].partOfInfrastructure = { rootX: x, rootY: y };
-                        world[y+1][x+1].partOfInfrastructure = { rootX: x, rootY: y };
-                        
-                        const nativeBiome = factionInfo.preferredBiomes[0] || BIOMES[1].id;
-                        for (let ddy = -SETTLEMENT_RADIUS; ddy <= SETTLEMENT_RADIUS; ddy++) {
-                            for (let ddx = -SETTLEMENT_RADIUS; ddx <= SETTLEMENT_RADIUS; ddx++) {
-                                const nx = x + ddx; const ny = y + ddy;
-                                if (Math.hypot(ddx, ddy) <= SETTLEMENT_RADIUS && nx >= 0 && nx < WORLD_SIZE && ny >= 0 && ny < WORLD_SIZE) {
-                                    world[ny][nx].biomeId = nativeBiome;
-                                }
+                    // Check if area is valid and empty
+                    let areaIsValid = true;
+                    for(let my=0; my < height; my++) {
+                        for(let mx=0; mx < width; mx++) {
+                            const tile = world[y+my]?.[x+mx];
+                            if (!tile || tile.ownerFactionId || tile.infrastructureId || tile.resourceId || tile.worldEventId || tile.partOfInfrastructure) {
+                                areaIsValid = false;
+                                break;
                             }
                         }
+                        if(!areaIsValid) break;
+                    }
+                    
+                    if (areaIsValid) {
+                        const rootTile = world[y][x];
+                        const maxHp = (Object.values(hamletDef.upgradeCost!).reduce((s, a) => s + a, 0)) * INFRA_HP_COST_MULTIPLIER;
+                        
+                        // Place structure and link parts
+                        rootTile.ownerFactionId = factionId;
+                        rootTile.infrastructureId = hamletDef.id;
+                        rootTile.hp = maxHp;
+                        rootTile.maxHp = maxHp;
+                        for(let my=0; my < height; my++) {
+                            for(let mx=0; mx < width; mx++) {
+                                if (mx === 0 && my === 0) continue;
+                                world[y+my][x+mx].partOfInfrastructure = { rootX: x, rootY: y };
+                            }
+                        }
+                        
+                        // Spawn initial units
                         const workerDef = UNITS.find(u => u.factionId === factionId && u.role === 'Worker');
                         if (workerDef) {
                             rootTile.units.push(createUnit(unitIdCounter++, workerDef, factionInfo, x, y));
                             rootTile.units.push(createUnit(unitIdCounter++, workerDef, factionInfo, x, y));
                         }
-                        const skirmisherDef = UNITS.find(u => u.factionId === factionId && u.role === 'Skirmisher' && u.tier === 1);
-                        if (skirmisherDef) {
-                            rootTile.units.push(createUnit(unitIdCounter++, skirmisherDef, factionInfo, x, y));
+                        const rangedDef = UNITS.find(u => u.factionId === factionId && u.role === 'Ranged' && u.tier === 1);
+                        if (rangedDef) {
+                            rootTile.units.push(createUnit(unitIdCounter++, rangedDef, factionInfo, x, y));
                         }
-                        placed = true; foundSpot = true;
-                        break;
+                        
+                        placed = true;
                     }
                 }
-                if (foundSpot) break;
             }
-            searchRadius++;
-            attempts++;
         }
         if (!placed) console.error(`CRITICAL: Could not place faction ${factionInfo.name}.`);
     });
@@ -212,13 +213,15 @@ function placeFactions(world: TileData[][], factions: Record<string, FactionStat
 export function generateInitialGameState(): GameState {
   const world = createEmptyWorld();
   placeBiomes(world);
+
   const factionStates: Record<string, FactionState> = {};
   const mainFactions = FACTIONS.filter(f => f.id !== 'neutral_hostile');
   const startingResources = { 'steamwood_plank': 20, 'iron_ingot': 20 };
+
   mainFactions.forEach((faction, index) => {
     const initialStorage: Record<ResourceTier, { current: number; capacity: number }> = { Raw: { current: 0, capacity: 0 }, Processed: { current: 0, capacity: 0 }, Component: { current: 0, capacity: 0 }, Exotic: { current: 0, capacity: 0 }, };
-    const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet');
-    if (hamletDef?.addsStorage) {
+    const hamletDef = INFRASTRUCTURE_MAP.get('settlement_hamlet')!;
+    if (hamletDef.addsStorage) {
         for (const [tier, amount] of Object.entries(hamletDef.addsStorage)) {
             initialStorage[tier as ResourceTier].capacity = amount;
         }
@@ -229,14 +232,41 @@ export function generateInitialGameState(): GameState {
     }
     factionStates[faction.id] = { id: faction.id, resources: startingResources, storage: initialStorage, leader: CHARACTERS[index % CHARACTERS.length], researchPoints: 0, unlockedTechs: [], athar: 100, population: 10, leaderStatus: 'settled', diplomacy: {}, isEliminated: false };
   });
+  
   const nextUnitId = placeFactions(world, factionStates);
   placeResources(world);
   placeWorldEvents(world);
+  placeInitialLoot(world);
+
+  // Initialize diplomatic relations with natural enmity
   const factionIds = Object.keys(factionStates);
+  const naturalEnemies: Record<string, { nemesis: string, opinion: number }> = {
+      'f1': { nemesis: 'f2', opinion: -25 }, // Industrial vs Nature
+      'f3': { nemesis: 'f7', opinion: -50 }, // Holy vs Undead
+  };
   for (const fA of factionIds) {
     for (const fB of factionIds) {
-      if (fA !== fB) factionStates[fA].diplomacy[fB] = { status: 'Neutral', opinion: 0 };
+      if (fA !== fB) {
+        let initialOpinion = 0;
+        if (naturalEnemies[fA]?.nemesis === fB || naturalEnemies[fB]?.nemesis === fA) {
+            initialOpinion = naturalEnemies[fA]?.opinion || naturalEnemies[fB]?.opinion || 0;
+        }
+        factionStates[fA].diplomacy[fB] = { status: 'Neutral', opinion: initialOpinion };
+      }
     }
   }
-  return { world, factions: factionStates, gameTime: { tick: 0, year: STARTING_YEAR, epoch: 'era_of_awakening' }, selectedTile: null, selectedUnitId: null, nextUnitId, attackFlashes: {}, dyingUnits: [], eventLog: [], nextEventId: 0, totalMintedAthar: 0 };
+
+  return { 
+      world, 
+      factions: factionStates, 
+      gameTime: { tick: 0, year: STARTING_YEAR, epoch: 'era_of_awakening' }, 
+      selectedTile: null, 
+      selectedUnitId: null, 
+      nextUnitId, 
+      attackFlashes: {}, 
+      dyingUnits: [], 
+      eventLog: [], 
+      nextEventId: 0, 
+      totalMintedAthar: 0 
+    };
 }
