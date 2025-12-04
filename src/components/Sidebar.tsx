@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import type { TileData, GameState, DiplomaticStatus, UnitInstance, SoundManager, ResourceTier, ItemDefinition, StatEffect, StorageTierData, DiplomaticRelation } from '../types';
+import type { TileData, GameState, UnitInstance, SoundManager, ResourceTier, ItemDefinition, StatEffect, StorageTierData } from '../types';
 import { BIOMES_MAP, RESOURCES_MAP, UNITS_MAP, FACTIONS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, UNITS, XP_PER_LEVEL, RARITY_COLORS } from '../constants';
 import Icon from './Icon';
 import UnitListItem from './UnitListItem';
@@ -14,14 +14,6 @@ interface SidebarProps {
   soundManager: SoundManager | null;
   isMinimized: boolean;
   onToggleMinimize: () => void;
-}
-
-const getStatusStyles = (status: DiplomaticStatus): { color: string, icon: string } => {
-    switch (status) {
-        case 'War': return { color: 'text-red-400', icon: 'war' };
-        case 'Alliance': return { color: 'text-green-400', icon: 'alliance' };
-        default: return { color: 'text-gray-400', icon: '' };
-    }
 }
 
 const ItemTooltip: React.FC<{item: ItemDefinition, targetElement: HTMLElement}> = ({ item, targetElement }) => {
@@ -305,7 +297,7 @@ const renderContent = () => {
                     {isSettlement && infrastructure.upgradesTo && infrastructure.upgradeCost && (
                         <div className="pt-2 border-t border-gray-700">
                             <h4 className="font-semibold text-gray-300 text-xs">Next Upgrade:</h4>
-                            <ul className="text-xs text-gray-400">{Object.entries(infrastructure.upgradeCost).map(([id, amount]) => (<li key={id}>- {amount as number} {RESOURCES_MAP.get(id)?.name || id}</li>))}</ul>
+                            <ul className="text-xs text-gray-400">{Object.entries(infrastructure.upgradeCost).map(([id, amount]) => (<li key={id}>- {Number(amount)} {RESOURCES_MAP.get(id)?.name || id}</li>))}</ul>
                         </div>
                     )}
                 </div>
@@ -339,7 +331,6 @@ const renderContent = () => {
   const desktopClasses = `hidden md:flex flex-col top-0 right-0 h-full border-l-2 ${isMinimized ? 'w-4' : 'w-80'}`;
   
   // Mobile: Bottom sheet
-  // If minimized on mobile, it's a small bar at the bottom. If expanded, it covers 50% height.
   const mobileClasses = `flex md:hidden flex-col bottom-0 left-0 w-full border-t-2 ${isMinimized ? 'h-8' : 'h-[60vh]'}`;
 
   return (

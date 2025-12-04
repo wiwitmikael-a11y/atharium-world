@@ -10,7 +10,7 @@ const getRandomInt = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-const getFactionVisualGenes = (faction: Faction, role: string, tier: number): VisualGenes => {
+const getFactionVisualGenes = (faction: Faction, role: string, _tier: number): VisualGenes => {
     const primary = FACTIONS_MAP.get(faction.id)?.color ? '#ef4444' : '#888'; 
     let bodyType: BodyType = 'Humanoid';
     let headType: VisualGenes['headType'] = 'Standard';

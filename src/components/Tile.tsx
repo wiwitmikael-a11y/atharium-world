@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { TileData, GameState } from '../types';
 import { RESOURCES_MAP, UNITS_MAP, INFRASTRUCTURE_MAP, WORLD_EVENTS_MAP, BIOME_PASTEL_COLORS, FACTIONS_MAP } from '../constants';
 import { ProceduralAsset } from './ProceduralGraphics';
@@ -96,7 +96,6 @@ const Tile: React.FC<TileProps> = ({ tile, isSelected, onSelect, gameState }) =>
   };
 
   const faction = getOwnerFaction();
-  const factionColor = faction ? faction.color.replace('500', '600').replace('400', '500') : undefined; // Darker version for overlay
   
   // Convert Tailwind color names to Hex approx for texture overlay
   const hexMap: Record<string, string> = {

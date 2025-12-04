@@ -2,7 +2,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { playSynthSound } from '../services/audioSynth';
 
-export const useSoundManager = (zoom: number) => {
+export const useSoundManager = (_zoom: number) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isBgmEnabled, setIsBgmEnabled] = useState(true);
   const [isSfxEnabled, setIsSfxEnabled] = useState(true);

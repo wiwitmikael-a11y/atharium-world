@@ -154,7 +154,7 @@ const buildHumanoid = (genes: VisualGenes, primary: string, secondary: string) =
     return voxels;
 };
 
-const buildVehicle = (genes: VisualGenes, primary: string, secondary: string) => {
+const buildVehicle = (_genes: VisualGenes, primary: string, secondary: string) => {
     const voxels: React.ReactNode[] = [];
     
     // Chassis

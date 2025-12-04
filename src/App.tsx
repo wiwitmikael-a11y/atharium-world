@@ -6,7 +6,7 @@ import { useGameLoop } from './hooks/useGameLoop';
 import { useCameraControls } from './hooks/useCameraControls';
 import { useSoundManager } from './hooks/useSoundManager';
 import { useAssetLoader } from './hooks/useAssetLoader';
-import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE, FACTIONS_MAP, FACTION_COLOR_HEX_MAP, FACTION_COLOR_RGB_MAP, UNITS } from './constants';
+import { BIOMES_MAP, INFRASTRUCTURE_MAP, WORLD_SIZE, FACTIONS_MAP, FACTION_COLOR_HEX_MAP, FACTION_COLOR_RGB_MAP } from './constants';
 import { ASSET_PATHS } from './assets';
 import GameMap from './components/GameMap';
 import Sidebar from './components/Sidebar';
@@ -39,8 +39,6 @@ const App: React.FC = () => {
 
   const targetPanRef = useRef({ x: 0, y: 0 });
   const hasPannedToStartRef = useRef(false);
-  // Ref for dragging god powers
-  const isDraggingPowerRef = useRef(false);
   
   const initialPan = useMemo(() => ({ x: 0, y: 0 }), []);
   const [camera, setCamera] = useState({ pan: initialPan, zoom: 0.5 });
@@ -87,104 +85,47 @@ const App: React.FC = () => {
     setCamera(prev => ({ ...prev, zoom: Math.max(0.8, prev.zoom), pan: { x: panX, y: panY }}));
   }, []);
   
-  const applyGodPower = useCallback((x: number, y: number) => {
-      setGameState(prev => {
-          if (!prev || !prev.activeGodPower) return prev;
-          if (prev.totalMintedAthar < prev.activeGodPower.cost) return prev;
-
-          const newState = { ...prev };
-          // Deep clone world row for mutation safety
-          const newWorld = [...newState.world];
-          newWorld[y] = [...newWorld[y]];
-          newState.world = newWorld;
-          
-          const tile = newState.world[y][x];
-          const power = prev.activeGodPower;
-          let effectApplied = false;
-
-          // Brush Size Logic (Simple radius)
-          const radius = power.brushSize || 0;
-          const tilesToAffect = [];
-          if (radius === 0) tilesToAffect.push(tile);
-          else {
-              for(let dy = -radius; dy <= radius; dy++) {
-                  for(let dx = -radius; dx <= radius; dx++) {
-                      const t = newState.world[y+dy]?.[x+dx];
-                      if(t) tilesToAffect.push(t);
-                  }
-              }
-          }
-
-          tilesToAffect.forEach(t => {
-              if (power.effectType === 'Damage') {
-                  if (t.units.length > 0) {
-                      t.units.forEach(u => u.hp -= 50);
-                      newState.floatingTexts.push({ id: Math.random(), text: "-50", x: t.x, y: t.y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
-                      effectApplied = true;
-                  }
-                  if (t.infrastructureId) {
-                      t.hp = (t.hp || 100) - 50;
-                      newState.floatingTexts.push({ id: Math.random(), text: "-50", x: t.x, y: t.y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
-                      effectApplied = true;
-                      if (power.id === 'Meteor') {
-                          t.infrastructureId = undefined; // Destroy instantly
-                          t.biomeId = 'ashlands'; // Crater effect
-                      }
-                  }
-                  if (power.id === 'Meteor') {
-                      t.biomeId = 'ashlands'; // Scorch earth
-                      effectApplied = true;
-                  }
-              } 
-              else if (power.effectType === 'Heal') {
-                  let healed = false;
-                  if (t.units.length > 0) { t.units.forEach(u => u.hp += 50); healed = true; }
-                  if (t.infrastructureId) { t.hp = (t.maxHp || 100); healed = true; }
-                  if (healed) {
-                      newState.floatingTexts.push({ id: Math.random(), text: "+50", x: t.x, y: t.y, color: "#00FF00", life: 1, velocity: {x:0, y:-0.1} });
-                      effectApplied = true;
-                  }
-              }
-              else if (power.effectType === 'Terraform' && power.payload) {
-                  if (t.biomeId !== power.payload) {
-                      t.biomeId = power.payload;
-                      effectApplied = true;
-                  }
-              }
-              else if (power.effectType === 'Resource' && !t.resourceId && !t.infrastructureId) {
-                  t.resourceId = 'resource_fluxbloom'; // Default random spawn for now
-                  newState.floatingTexts.push({ id: Math.random(), text: "Enriched!", x: t.x, y: t.y, color: "#00FFFF", life: 1, velocity: {x:0, y:-0.1} });
-                  effectApplied = true;
-              }
-              else if (power.effectType === 'Spawn' && power.payload) {
-                  if (!t.infrastructureId && t.units.length < 3) {
-                      // Hacky spawn logic, ideally move to worldGenerator utility
-                      const unitDef = UNITS.find(u => u.assetId.includes(power.payload!)) || UNITS[0];
-                      // Use a random neutral or hostile faction if specific one not found
-                      const factionId = 'neutral_hostile'; 
-                      
-                      t.units.push({
-                          id: newState.nextUnitId++, unitId: unitDef.id, factionId, hp: unitDef.hp,
-                          x: t.x, y: t.y, level: 1, xp: 0, killCount: 0, combatLog: [], inventory: [], 
-                          equipment: { Weapon: null, Armor: null, Accessory: null }, currentActivity: 'Spawned',
-                          visualGenes: { bodyColor: '#555', secondaryColor: '#f00', bodyType: 'Humanoid', headType: 'Standard', weaponType: 'Axe', weaponColor: '#aaa', sizeScale: 1 }
-                      });
-                      effectApplied = true;
-                  }
-              }
-          });
-
-          if (effectApplied) {
-              soundManager.playSFX(power.id === 'Meteor' ? 'sfx_build_complete' : 'sfx_build_start'); 
-              newState.totalMintedAthar -= power.cost;
-          }
-          return newState;
-      });
-  }, [soundManager]);
-
   const handleSelectTile = useCallback((x: number, y: number) => {
     if (gameState?.activeGodPower) {
-        applyGodPower(x, y);
+        setGameState(prev => {
+            if (!prev) return null;
+            const newState = { ...prev };
+            const tile = newState.world[y][x];
+            let effectApplied = false;
+
+            if (newState.activeGodPower?.id === 'Smite' && newState.totalMintedAthar >= 50) {
+                if (tile.units.length > 0) {
+                    tile.units.forEach(u => u.hp -= 50);
+                    newState.floatingTexts.push({ id: Math.random(), text: "-50", x, y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                } else if (tile.infrastructureId) {
+                    tile.hp = (tile.hp || 100) - 50;
+                    newState.floatingTexts.push({ id: Math.random(), text: "-50", x, y, color: "#FF0000", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                }
+                if (effectApplied) newState.totalMintedAthar -= 50;
+            } else if (newState.activeGodPower?.id === 'Heal' && newState.totalMintedAthar >= 30) {
+                if (tile.units.length > 0) {
+                    tile.units.forEach(u => u.hp += 50);
+                    newState.floatingTexts.push({ id: Math.random(), text: "+50", x, y, color: "#00FF00", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                }
+                if (effectApplied) newState.totalMintedAthar -= 30;
+            } else if (newState.activeGodPower?.id === 'Enrich' && newState.totalMintedAthar >= 100) {
+                if (!tile.resourceId && !tile.infrastructureId) {
+                    tile.resourceId = 'resource_fluxbloom';
+                    newState.floatingTexts.push({ id: Math.random(), text: "Enriched!", x, y, color: "#00FFFF", life: 1, velocity: {x:0, y:-0.1} });
+                    effectApplied = true;
+                    newState.totalMintedAthar -= 100;
+                }
+            }
+
+            if (effectApplied) {
+                soundManager.playSFX('sfx_build_start'); 
+                newState.activeGodPower = null; 
+            }
+            return newState;
+        });
         return;
     }
 
@@ -199,23 +140,8 @@ const App: React.FC = () => {
         setIsFollowing(!!selectedUnitId);
         return { ...prev, selectedTile: { x, y }, selectedUnitId };
     });
-  }, [soundManager, gameState?.activeGodPower, applyGodPower]);
+  }, [soundManager, gameState?.activeGodPower]);
   
-  // Mouse Move handler for "Painting" with God Powers
-  useEffect(() => {
-      const handlePointerMove = (e: MouseEvent) => {
-          if (isDraggingPowerRef.current && gameState?.activeGodPower) {
-              // This is complex because we need to raycast from screen to tile.
-              // For now, we'll rely on individual clicks or dragging logic inside GameMap if implemented.
-              // A simpler approach for V1 is "Click to Apply" multiple times.
-              // WorldBox painting requires continuous raycasting which is heavy for React state updates.
-              // We will stick to Click-based interaction for stability in this iteration.
-          }
-      };
-      window.addEventListener('mousemove', handlePointerMove);
-      return () => window.removeEventListener('mousemove', handlePointerMove);
-  }, [gameState?.activeGodPower]);
-
   const handleSelectUnit = useCallback((unitId: number | null) => {
     setIsFollowing(!!unitId);
     setGameState(prev => {
@@ -393,15 +319,27 @@ const App: React.FC = () => {
       case 'playing':
         if (gameState && soundManager.isAudioInitialized) {
           return (
-            <div className="w-full h-full flex">
-              <main ref={mapContainerRef} className={`flex-1 h-full relative ${gameState.activeGodPower ? 'cursor-crosshair' : 'cursor-default'}`}>
+            <div className="w-full h-full relative overflow-hidden">
+              <main ref={mapContainerRef} className={`absolute inset-0 w-full h-full ${gameState.activeGodPower ? 'cursor-crosshair' : 'cursor-default'}`}>
                 <GameMap gameState={gameState} onSelectTile={handleSelectTile} camera={camera} />
-                <Header gameState={gameState} gameSpeed={gameSpeed} onSetSpeed={setGameSpeed} soundManager={soundManager} onResetWorld={handleResetWorld} onExitToMenu={handleExitToMenu} onSaveGame={handleSaveGame} onToggleHelp={() => setIsHelpOpen(p => !p)} onSelectFaction={handleSelectFaction} />
-                <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
-                <GodPowersMenu activePower={gameState.activeGodPower} onSelectPower={handleSetGodPower} currentAthar={gameState.totalMintedAthar} />
-                <SaveConfirmationDialog show={showSaveConfirm} />
               </main>
-              <Sidebar selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y]?.[gameState.selectedTile.x] : null} gameState={gameState} onSelectUnit={handleSelectUnit} onPanToLocation={handlePanToLocation} soundManager={soundManager} isMinimized={isSidebarMinimized} onToggleMinimize={() => setIsSidebarMinimized(p => !p)} />
+              
+              {/* UI Overlay Layer */}
+              <div className="absolute inset-0 pointer-events-none">
+                  {/* Top Bar */}
+                  <Header gameState={gameState} gameSpeed={gameSpeed} onSetSpeed={setGameSpeed} soundManager={soundManager} onResetWorld={handleResetWorld} onExitToMenu={handleExitToMenu} onSaveGame={handleSaveGame} onToggleHelp={() => setIsHelpOpen(p => !p)} onSelectFaction={handleSelectFaction} />
+                  
+                  {/* Bottom Elements */}
+                  <GodPowersMenu activePower={gameState.activeGodPower} onSelectPower={handleSetGodPower} currentAthar={gameState.totalMintedAthar} />
+                  <EventTicker events={gameState.eventLog} onEventClick={handlePanToLocation} />
+                  <SaveConfirmationDialog show={showSaveConfirm} />
+              </div>
+
+              {/* Sidebar (handles its own positioning/interaction) */}
+              <div className="pointer-events-auto">
+                <Sidebar selectedTile={gameState.selectedTile ? gameState.world[gameState.selectedTile.y]?.[gameState.selectedTile.x] : null} gameState={gameState} onSelectUnit={handleSelectUnit} onPanToLocation={handlePanToLocation} soundManager={soundManager} isMinimized={isSidebarMinimized} onToggleMinimize={() => setIsSidebarMinimized(p => !p)} />
+              </div>
+
               {isHelpOpen && <HelpModal onClose={() => setIsHelpOpen(false)} isFirstTime={isFirstTimeSession} />}
             </div>
           );
